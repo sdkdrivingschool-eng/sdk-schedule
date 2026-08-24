@@ -1,0 +1,82 @@
+@import 'tailwindcss';
+
+/*
+  Dense, data-first dashboard, cloned from the Vercel dashboard's design
+  language — near-black canvas, cards defined almost entirely by a crisp
+  translucent-white hairline border rather than a lighter fill, and pill
+  badges. One accent (near-white) for primary actions; the three schedule
+  states own emerald / blue / neutral tints and nothing else uses them, so
+  colour always means the same thing.
+*/
+@theme {
+  --font-sans:
+    'Inter var', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+
+  --color-surface: #0a0a0a;
+  --color-surface-2: #151515;
+  --color-surface-3: #1e1e1e;
+  --color-line: rgba(255, 255, 255, 0.11);
+  --color-line-strong: rgba(255, 255, 255, 0.22);
+  --color-fg: #ededed;
+  --color-fg-muted: #8a8a8a;
+  --color-fg-subtle: #575757;
+  --color-accent: #ededed;
+  --color-accent-hover: #ffffff;
+
+  --animate-fade-in: fade-in 180ms ease-out;
+  --animate-scale-in: scale-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-in-up: fade-in-up 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-black text-fg antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'tnum';
+  }
+
+  /* Times line up in columns when digits are tabular. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background: rgba(237, 237, 237, 0.25);
+  }
+}

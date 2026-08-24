@@ -65,11 +65,13 @@
   html {
     -webkit-text-size-adjust: 100%;
     overflow-x: hidden;
+    overscroll-behavior-x: none;
   }
 
   body {
     @apply bg-black text-fg antialiased;
     overflow-x: hidden;
+    overscroll-behavior-x: none;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'tnum';
   }
 

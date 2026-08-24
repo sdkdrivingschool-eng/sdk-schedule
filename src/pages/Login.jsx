@@ -54,13 +54,13 @@ export default function Login() {
   }
 
   return (
-    <div className="relative flex min-h-dvh w-full items-center justify-center overflow-hidden bg-black px-4 py-12 text-white">
+    <div className="relative flex h-dvh w-full items-center justify-center overflow-hidden bg-black px-4 py-6 text-white sm:py-12">
       <DotMatrixBackground className="z-0" />
 
       {/* Vignette — dims the dots behind the card so the form stays readable. */}
       <div className="pointer-events-none absolute inset-0 z-[1] bg-[radial-gradient(circle_at_center,rgba(0,0,0,0.75)_0%,rgba(0,0,0,0)_100%)]" />
 
-      <div className="relative z-[2] flex w-full max-w-[400px] flex-col items-center rounded-xl border border-[#222] bg-[#121212] p-8 shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
+      <div className="relative z-[2] flex max-h-full w-full max-w-[400px] flex-col items-center overflow-y-auto rounded-xl border border-[#222] bg-[#121212] p-6 shadow-[0_10px_40px_rgba(0,0,0,0.8)] sm:p-8">
         <div className="flex w-full max-w-[360px] flex-col items-center text-center">
           <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-full border border-[#333] bg-[#111] text-sm font-bold tracking-tight">
             SDK

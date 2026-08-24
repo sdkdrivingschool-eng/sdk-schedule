@@ -45,7 +45,7 @@ export function Modal({ open, onClose, title, subtitle, children, footer }) {
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="animate-scale-in max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-surface shadow-2xl shadow-black/60 ring-1 ring-line sm:max-w-lg sm:rounded-2xl"
+        className="animate-scale-in max-h-[92vh] w-full min-w-0 overflow-x-hidden overflow-y-auto rounded-t-2xl bg-surface shadow-2xl shadow-black/60 ring-1 ring-line sm:max-w-lg sm:rounded-2xl"
       >
         <header className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
           <div>
@@ -115,7 +115,7 @@ export function Button({
 
 export function Field({ label, hint, error, children }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="mb-1 block text-sm font-medium text-fg-muted">
         {label}
       </span>

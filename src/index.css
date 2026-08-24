@@ -81,6 +81,21 @@
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'tnum';
   }
 
+  /*
+    iOS Safari gives date/datetime-local/time inputs a large intrinsic
+    minimum width that `width: 100%` does not override — they refuse to
+    shrink and push their container past the viewport. Pair an explicit
+    `min-width: 0` with `max-width: 100%` so they can actually shrink to
+    fit. The `min-width` half matters because form controls, like flex and
+    grid children, otherwise floor at their content width.
+  */
+  input,
+  select,
+  textarea {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   /* Times line up in columns when digits are tabular. */
   .tabular {
     font-variant-numeric: tabular-nums;

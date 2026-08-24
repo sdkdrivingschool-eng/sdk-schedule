@@ -7,8 +7,10 @@ import { supabase } from '../lib/supabase'
 // The reference design's exact values, kept in one place so the card, inputs and
 // button stay consistent. This screen is deliberately the only dark surface in
 // the app — everything past sign-in is the light scheduling UI.
+// 16px on mobile, the design's 14px from `sm` up — iOS Safari auto-zooms on
+// focus for anything smaller and never zooms back out.
 const inputClass =
-  'w-full rounded-md border border-[#333] bg-black px-[0.85rem] py-[0.65rem] text-[0.875rem] text-white outline-none transition placeholder:text-[#555] focus:border-[#666]'
+  'w-full rounded-md border border-[#333] bg-black px-[0.85rem] py-[0.65rem] text-base sm:text-[0.875rem] text-white outline-none transition placeholder:text-[#555] focus:border-[#666]'
 
 export default function Login() {
   const { signIn } = useAuth()

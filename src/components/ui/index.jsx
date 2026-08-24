@@ -126,8 +126,13 @@ export function Field({ label, hint, error, children }) {
   )
 }
 
+/*
+  text-base on mobile, text-sm from `sm` up: iOS Safari auto-zooms on focus
+  for any control under 16px and never zooms back out, so the phone breakpoint
+  has to clear 16px even though 14px is the size the design wants.
+*/
 export const inputClass =
-  'block w-full rounded-lg border border-line bg-black px-3 py-2 text-sm text-fg placeholder:text-fg-subtle transition-colors duration-150 outline-none focus:border-line-strong focus:ring-2 focus:ring-white/10'
+  'block w-full rounded-lg border border-line bg-black px-3 py-2 text-base sm:text-sm text-fg placeholder:text-fg-subtle transition-colors duration-150 outline-none focus:border-line-strong focus:ring-2 focus:ring-white/10'
 
 /** Inline error banner — used for conflicts, which are expected, not crashes. */
 export function ErrorNote({ children }) {

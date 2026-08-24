@@ -64,10 +64,12 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    overflow-x: hidden;
   }
 
   body {
     @apply bg-black text-fg antialiased;
+    overflow-x: hidden;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'tnum';
   }
 

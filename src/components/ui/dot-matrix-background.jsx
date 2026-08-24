@@ -135,6 +135,17 @@ export default function DotMatrixBackground({ className = '' }) {
         // the whole viewport — and reports 0 in embedded/headless viewports.
         // `updateStyle: false` leaves the display size to `absolute inset-0`, so
         // there is no inline style competing with the class.
+        //
+        // The desktop pitch (20-unit grid, 6-unit dot — a ~10 CSS px pitch) is
+        // untouched. Below the breakpoint the grid is scaled down to a ~6px
+        // pitch at the same dot/pitch ratio: on a phone-sized viewport, a 10px
+        // pitch reads as chunky, and — because the intro sweep's duration is
+        // driven by how many grid cells fit between the centre and the
+        // farthest corner — a small screen at the desktop pitch has so few
+        // cells that the "sweep outward" finishes in under a fifth of a
+        // second and barely registers. A finer grid restores both the size
+        // and the sweep duration together.
+        const MOBILE_BREAKPOINT = 640
         const resize = () => {
           const box = canvas.parentElement ?? canvas
           const w = box.clientWidth || window.innerWidth
@@ -142,6 +153,10 @@ export default function DotMatrixBackground({ className = '' }) {
           if (!w || !h) return
           renderer.setSize(w, h, false)
           uniforms.u_resolution.value.set(w * 2, h * 2)
+
+          const isMobile = w < MOBILE_BREAKPOINT
+          uniforms.u_total_size.value = isMobile ? 12.0 : 20.0
+          uniforms.u_dot_size.value = isMobile ? 3.6 : 6.0
         }
         resize()
 

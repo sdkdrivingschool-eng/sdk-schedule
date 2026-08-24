@@ -23,7 +23,7 @@ export default function Schedule() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const [view, setView] = useState('week')
+  const [view, setView] = useState('day')
   const [anchor, setAnchor] = useState(() => new Date())
   const [dialog, setDialog] = useState({ type: null })
 

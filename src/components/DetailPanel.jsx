@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { Button, ErrorNote, Modal, Spinner } from './ui'
 import { SEGMENT_STYLES, canWrite, durationLabel, fmtRange, minutesOf } from '../lib/schedule'
@@ -31,6 +31,20 @@ export function DetailPanel({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+
+  /*
+   * The panel is always mounted — closing only makes the modal render null —
+   * so state survives from one opening to the next. Left alone that means a
+   * finished action keeps `busy` true and disables every control the next
+   * time the panel opens, and an armed delete confirmation carries over onto
+   * a different row, where the next single click would delete without ever
+   * asking. Reset whenever the panel opens or changes target.
+   */
+  useEffect(() => {
+    setBusy(false)
+    setError(null)
+    setConfirmingDelete(false)
+  }, [open, segment?.row?.id])
 
   if (!segment?.row) return null
 

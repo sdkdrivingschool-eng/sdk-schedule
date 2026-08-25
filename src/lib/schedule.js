@@ -13,14 +13,17 @@ import {
 export const DAY_START_HOUR = 8
 export const DAY_END_HOUR = 20
 
-/** Lesson lengths offered in the booking modal. Lessons are a 2-hour slot. */
-export const DURATIONS = [120]
+/** Lesson lengths offered in the booking modal. */
+export const DURATIONS = [90, 120, 150]
+
+/** The standard slot — what a new booking starts on. */
+export const DEFAULT_DURATION = 120
 
 /** Reasons allowed by the availability_blocks check constraint. */
 export const REASONS = ['Personal', 'Sick', 'Training', 'Other']
 
-/** Shortest bookable gap — a lesson is a full 2-hour slot. */
-export const MIN_LESSON_MINUTES = 120
+/** Shortest bookable gap — no point offering a slot no lesson would fit. */
+export const MIN_LESSON_MINUTES = Math.min(...DURATIONS)
 
 /**
  * One colour per state, defined once so the legend and the grid can never
@@ -190,6 +193,20 @@ export function canWrite(profile, row) {
   if (!profile) return false
   if (profile.admin_access) return true
   return row.instructor_id === profile.id || row.created_by === profile.id
+}
+
+/**
+ * How a profile's role reads in the UI.
+ *
+ * Role and admin rights are separate columns, so an instructor can hold admin
+ * access — show both rather than picking one and hiding the other.
+ */
+export function roleLabel(profile) {
+  if (!profile) return ''
+  if (profile.role !== 'admin' && profile.admin_access) {
+    return `${profile.role}/admin`
+  }
+  return profile.role
 }
 
 /** Combine a date input (yyyy-MM-dd) and time input (HH:mm) into a Date. */

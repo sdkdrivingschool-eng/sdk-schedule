@@ -9,6 +9,7 @@ import {
   inputClass,
 } from './ui'
 import {
+  DEFAULT_DURATION,
   DURATIONS,
   combineDateTime,
   durationLabel,
@@ -45,7 +46,7 @@ export function BookingModal({
   const [instructorId, setInstructorId] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('09:00')
-  const [duration, setDuration] = useState(DURATIONS[0])
+  const [duration, setDuration] = useState(DEFAULT_DURATION)
   const [notes, setNotes] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -79,7 +80,7 @@ export function BookingModal({
           ? `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
           : '09:00',
       )
-      setDuration(DURATIONS[0])
+      setDuration(DEFAULT_DURATION)
       setNotes('')
     }
 

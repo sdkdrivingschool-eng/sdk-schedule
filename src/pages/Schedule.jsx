@@ -3,7 +3,7 @@ import { addDays, addWeeks, format, isSameDay } from 'date-fns'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { fetchSchedule, fetchUsers } from '../lib/api'
-import { weekDays, weekStart } from '../lib/schedule'
+import { roleLabel, weekDays, weekStart } from '../lib/schedule'
 import { DayGrid, WeekGrid } from '../components/ScheduleGrid'
 import { Legend } from '../components/ScheduleSegment'
 import { BookingModal } from '../components/BookingModal'
@@ -161,8 +161,8 @@ export default function Schedule() {
                 </h1>
                 <p className="mt-1 flex items-center gap-1.5 text-sm text-fg-muted">
                   {profile?.name}
-                  <span className="rounded-full bg-surface-2 px-2 py-px text-[10px] font-medium tracking-wide text-fg-muted uppercase ring-1 ring-line">
-                    {profile?.role}
+                  <span className="rounded-full bg-white px-2 py-px text-[10px] font-semibold tracking-wide text-black uppercase">
+                    {roleLabel(profile)}
                   </span>
                 </p>
               </div>

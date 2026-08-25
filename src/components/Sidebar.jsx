@@ -1,3 +1,5 @@
+import { roleLabel } from '../lib/schedule'
+
 /**
  * Persistent left nav, styled after a typical SaaS dashboard shell — logo,
  * signed-in user card, nav list, sign out pinned to the bottom.
@@ -32,7 +34,7 @@ export function Sidebar({ profile, onSignOut }) {
             {profile?.name}
           </div>
           <div className="text-[11px] tracking-wide text-fg-muted uppercase">
-            {profile?.role}
+            {roleLabel(profile)}
           </div>
         </div>
       </div>

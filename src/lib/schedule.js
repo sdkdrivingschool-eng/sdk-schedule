@@ -13,14 +13,14 @@ import {
 export const DAY_START_HOUR = 8
 export const DAY_END_HOUR = 20
 
-/** Lesson lengths offered in the booking modal. */
-export const DURATIONS = [60, 90]
+/** Lesson lengths offered in the booking modal. Lessons are a 2-hour slot. */
+export const DURATIONS = [120]
 
 /** Reasons allowed by the availability_blocks check constraint. */
 export const REASONS = ['Personal', 'Sick', 'Training', 'Other']
 
-/** Shortest bookable gap — a lesson is at least 60 minutes. */
-export const MIN_LESSON_MINUTES = 60
+/** Shortest bookable gap — a lesson is a full 2-hour slot. */
+export const MIN_LESSON_MINUTES = 120
 
 /**
  * One colour per state, defined once so the legend and the grid can never
@@ -188,7 +188,7 @@ export const onDay = (day) => (row) =>
  */
 export function canWrite(profile, row) {
   if (!profile) return false
-  if (profile.role === 'admin') return true
+  if (profile.admin_access) return true
   return row.instructor_id === profile.id || row.created_by === profile.id
 }
 

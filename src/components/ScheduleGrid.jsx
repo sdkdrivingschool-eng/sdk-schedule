@@ -28,7 +28,7 @@ function DayColumn({ instructor, day, bookings, blocks, profile, onSelect }) {
   // Instructors may only create against their own column — don't offer a
   // "+ Book" affordance that RLS would reject.
   const canCreate =
-    profile?.role === 'admin' || instructor.id === profile?.id
+    profile?.admin_access === true || instructor.id === profile?.id
 
   return (
     <div className="flex flex-col gap-1 p-1.5">

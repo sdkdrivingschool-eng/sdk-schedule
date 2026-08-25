@@ -45,7 +45,7 @@ export function BookingModal({
   const [instructorId, setInstructorId] = useState('')
   const [date, setDate] = useState('')
   const [time, setTime] = useState('09:00')
-  const [duration, setDuration] = useState(60)
+  const [duration, setDuration] = useState(DURATIONS[0])
   const [notes, setNotes] = useState('')
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -79,7 +79,7 @@ export function BookingModal({
           ? `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`
           : '09:00',
       )
-      setDuration(60)
+      setDuration(DURATIONS[0])
       setNotes('')
     }
 
@@ -95,6 +95,20 @@ export function BookingModal({
     if (Number.isNaN(start.getTime())) return null
     return { start, end: addMinutes(start, duration) }
   }, [date, time, duration])
+
+  /*
+   * Lessons booked under an earlier slot length still have to be editable.
+   * Without their own length in the list the select would fall back to
+   * displaying the first option while state held the real value — the form
+   * would claim a duration the booking does not have.
+   */
+  const durationOptions = useMemo(
+    () =>
+      DURATIONS.includes(duration)
+        ? DURATIONS
+        : [...DURATIONS, duration].sort((a, b) => a - b),
+    [duration],
+  )
 
   async function onSubmit(e) {
     e.preventDefault()
@@ -253,7 +267,7 @@ export function BookingModal({
               onChange={(e) => setDuration(Number(e.target.value))}
               className={inputClass}
             >
-              {DURATIONS.map((d) => (
+              {durationOptions.map((d) => (
                 <option key={d} value={d}>
                   {durationLabel(d)}
                 </option>

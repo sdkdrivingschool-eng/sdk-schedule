@@ -49,7 +49,7 @@ export function AuthProvider({ children }) {
 
     supabase
       .from('users')
-      .select('id, email, name, role')
+      .select('id, email, name, role, admin_access')
       .eq('id', userId)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -69,7 +69,9 @@ export function AuthProvider({ children }) {
       session,
       profile,
       loading,
-      isAdmin: profile?.role === 'admin',
+      // admin_access, not role: an instructor can hold admin rights and still
+      // be a bookable instructor, so the permission is its own column.
+      isAdmin: profile?.admin_access === true,
       signIn: (email, password) =>
         supabase.auth.signInWithPassword({ email, password }),
       signOut: () => supabase.auth.signOut(),

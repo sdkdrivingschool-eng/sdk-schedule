@@ -7,6 +7,7 @@ import {
   fmtDayNum,
   fmtDayShort,
   fmtDayLabel,
+  nowZoned,
   onDay,
 } from '../lib/schedule'
 import { ScheduleSegment } from './ScheduleSegment'
@@ -57,7 +58,7 @@ export function WeekGrid({
   profile,
   onSelect,
 }) {
-  const today = new Date()
+  const today = nowZoned()
   const template = `4.5rem repeat(${instructors.length}, minmax(0, 1fr))`
 
   return (

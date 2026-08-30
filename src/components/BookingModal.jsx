@@ -14,8 +14,10 @@ import {
   combineDateTime,
   durationLabel,
   fmtRange,
+  nowZoned,
   timeOptions,
   toDateInput,
+  zoned,
 } from '../lib/schedule'
 import {
   createBooking,
@@ -58,8 +60,8 @@ export function BookingModal({
     if (!open) return
 
     if (editing) {
-      const start = new Date(editing.start_time)
-      const end = new Date(editing.end_time)
+      const start = zoned(editing.start_time)
+      const end = zoned(editing.end_time)
       setStudentName(editing.student_name ?? '')
       setStudentPhone(editing.student_phone ?? '')
       setInstructorId(editing.instructor_id)
@@ -68,7 +70,7 @@ export function BookingModal({
       setDuration(Math.round((end - start) / 60000))
       setNotes(editing.notes ?? '')
     } else {
-      const start = initial.start ? new Date(initial.start) : new Date()
+      const start = initial.start ? zoned(initial.start) : nowZoned()
       setStudentName('')
       setStudentPhone('')
       setInstructorId(

@@ -3,7 +3,7 @@ import { addDays, addWeeks, format, isSameDay } from 'date-fns'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { fetchSchedule, fetchUsers } from '../lib/api'
-import { roleLabel, weekDays, weekStart } from '../lib/schedule'
+import { nowZoned, roleLabel, weekDays, weekStart } from '../lib/schedule'
 import { DayGrid, WeekGrid } from '../components/ScheduleGrid'
 import { Legend } from '../components/ScheduleSegment'
 import { BookingModal } from '../components/BookingModal'
@@ -24,7 +24,7 @@ export default function Schedule() {
   const [error, setError] = useState(null)
 
   const [view, setView] = useState('day')
-  const [anchor, setAnchor] = useState(() => new Date())
+  const [anchor, setAnchor] = useState(() => nowZoned())
   const [dialog, setDialog] = useState({ type: null })
 
   // The active tab lives in the URL so it survives a reload and can be linked.
@@ -249,7 +249,7 @@ export default function Schedule() {
                   <span className="sr-only">Next</span>
                   <Chevron dir="right" />
                 </Button>
-                <Button onClick={() => setAnchor(new Date())} className="ml-1">
+                <Button onClick={() => setAnchor(nowZoned())} className="ml-1">
                   Today
                 </Button>
               </div>

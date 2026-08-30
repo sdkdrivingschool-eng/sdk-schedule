@@ -4,13 +4,54 @@ import {
   differenceInMinutes,
   format,
   isSameDay,
-  parseISO,
   startOfDay,
   startOfWeek,
 } from 'date-fns'
+import { TZDate } from '@date-fns/tz'
 
-/** Working window rendered in the grid. Outside these hours nothing is shown. */
-export const DAY_START_HOUR = 8
+/**
+ * The school operates in London, so the schedule is pinned to London time
+ * rather than the viewer's device.
+ *
+ * Times are stored as UTC timestamptz and were previously rendered in
+ * whatever zone the browser happened to be in. That is correct for staff
+ * sitting in London but silently wrong anywhere else — the same lesson reads
+ * at a different hour, and a time typed on a device abroad is saved as that
+ * device's wall-clock. Pinning the zone makes a booking mean one thing no
+ * matter where it is opened, and keeps GMT/BST handling out of the callers.
+ */
+export const TIME_ZONE = 'Europe/London'
+
+/** An absolute instant (ISO string or Date) as London wall-clock. */
+export const zoned = (value) => new TZDate(value, TIME_ZONE)
+
+/** Now, in London. */
+export const nowZoned = () => new TZDate(Date.now(), TIME_ZONE)
+
+/**
+ * A wall-clock time the user typed, read as London.
+ *
+ * Built from parts on purpose: `new TZDate('2026-08-25T09:00', tz)` parses a
+ * string with no offset against the *device's* zone and then converts, so
+ * "09:00" entered abroad would not be 09:00 in London.
+ */
+function zonedFromParts(dateStr, timeStr) {
+  const [y, m, d] = String(dateStr).split('-').map(Number)
+  const [hh, mm] = String(timeStr).split(':').map(Number)
+  if ([y, m, d, hh, mm].some((n) => !Number.isFinite(n))) return new Date(NaN)
+  return new TZDate(y, m - 1, d, hh, mm, 0, TIME_ZONE)
+}
+
+/**
+ * Working window rendered in the grid.
+ *
+ * Anything wholly outside it is not drawn at all — buildDaySegments discards
+ * rows that do not overlap — so the window has to cover every lesson that
+ * actually gets booked, not just typical hours. In London time the earliest
+ * booking on record starts 05:00 and the latest ends 18:30; an 08:00 start
+ * was hiding the early ones outright.
+ */
+export const DAY_START_HOUR = 5
 export const DAY_END_HOUR = 20
 
 /** Lesson lengths offered in the booking modal. */
@@ -52,7 +93,7 @@ export const SEGMENT_STYLES = {
 
 /** Monday-based week start for the given date. */
 export function weekStart(date) {
-  return startOfWeek(date, { weekStartsOn: 1 })
+  return startOfWeek(zoned(date), { weekStartsOn: 1 })
 }
 
 /** The seven dates of the week containing `date`. */
@@ -63,7 +104,7 @@ export function weekDays(date) {
 
 /** Start/end Date pair bounding the working window on `day`. */
 export function workingWindow(day) {
-  const base = startOfDay(day)
+  const base = startOfDay(zoned(day))
   return {
     start: addMinutes(base, DAY_START_HOUR * 60),
     end: addMinutes(base, DAY_END_HOUR * 60),
@@ -90,8 +131,8 @@ export const fmtDayShort = (d) => format(d, 'EEE')
 export const fmtDayNum = (d) => format(d, 'd')
 
 /** `<input type="datetime-local">` wants this exact shape, no timezone. */
-export const toLocalInput = (d) => format(d, "yyyy-MM-dd'T'HH:mm")
-export const toDateInput = (d) => format(d, 'yyyy-MM-dd')
+export const toLocalInput = (d) => format(zoned(d), "yyyy-MM-dd'T'HH:mm")
+export const toDateInput = (d) => format(zoned(d), 'yyyy-MM-dd')
 
 export function durationLabel(minutes) {
   if (minutes < 60) return `${minutes}m`
@@ -118,15 +159,15 @@ export function buildDaySegments({ day, bookings = [], blocks = [] }) {
 
   for (const b of bookings) {
     if (b.status !== 'confirmed') continue
-    const start = parseISO(b.start_time)
-    const end = parseISO(b.end_time)
+    const start = zoned(b.start_time)
+    const end = zoned(b.end_time)
     if (!rangesOverlap(start, end, winStart, winEnd)) continue
     occupied.push({ kind: 'booking', start, end, row: b })
   }
 
   for (const bl of blocks) {
-    const start = parseISO(bl.start_time)
-    const end = parseISO(bl.end_time)
+    const start = zoned(bl.start_time)
+    const end = zoned(bl.end_time)
     if (!rangesOverlap(start, end, winStart, winEnd)) continue
     occupied.push({ kind: 'unavailable', start, end, row: bl })
   }
@@ -178,10 +219,10 @@ function makeFree(start, end) {
 
 /** Filter helpers used when slicing a week's rows down to one day. */
 export const onDay = (day) => (row) =>
-  isSameDay(parseISO(row.start_time), day) ||
-  isSameDay(parseISO(row.end_time), day) ||
-  (parseISO(row.start_time) < startOfDay(day) &&
-    parseISO(row.end_time) > startOfDay(day))
+  isSameDay(zoned(row.start_time), day) ||
+  isSameDay(zoned(row.end_time), day) ||
+  (zoned(row.start_time) < startOfDay(zoned(day)) &&
+    zoned(row.end_time) > startOfDay(zoned(day)))
 
 /**
  * Can this profile write this row?
@@ -211,7 +252,13 @@ export function roleLabel(profile) {
 
 /** Combine a date input (yyyy-MM-dd) and time input (HH:mm) into a Date. */
 export function combineDateTime(dateStr, timeStr) {
-  return new Date(`${dateStr}T${timeStr}`)
+  return zonedFromParts(dateStr, timeStr)
+}
+
+/** Parse a `datetime-local` value (`yyyy-MM-ddTHH:mm`) as London wall-clock. */
+export function fromLocalInput(value) {
+  const [datePart, timePart = '00:00'] = String(value).split('T')
+  return zonedFromParts(datePart, timePart)
 }
 
 /** Half-hour options across the working window, for the start-time select. */

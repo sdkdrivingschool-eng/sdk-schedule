@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { Button, ErrorNote, Modal, Spinner } from './ui'
-import { SEGMENT_STYLES, canWrite, durationLabel, fmtRange, minutesOf } from '../lib/schedule'
+import {
+  SEGMENT_STYLES,
+  canWrite,
+  durationLabel,
+  fmtRange,
+  minutesOf,
+  zoned,
+} from '../lib/schedule'
 import {
   cancelBooking,
   deleteBlock,
@@ -51,8 +58,8 @@ export function DetailPanel({
   const isBooking = segment.kind === 'booking'
   const row = segment.row
   const editable = canWrite(profile, row)
-  const start = new Date(row.start_time)
-  const end = new Date(row.end_time)
+  const start = zoned(row.start_time)
+  const end = zoned(row.end_time)
   const cancelled = isBooking && row.status === 'cancelled'
 
   async function runAction(fn) {

@@ -11,8 +11,11 @@ import {
 import {
   REASONS,
   durationLabel,
+  fromLocalInput,
   minutesOf,
+  nowZoned,
   toLocalInput,
+  zoned,
 } from '../lib/schedule'
 import {
   createBlock,
@@ -52,12 +55,12 @@ export function UnavailableModal({
 
     if (editing) {
       setInstructorId(editing.instructor_id)
-      setFrom(toLocalInput(new Date(editing.start_time)))
-      setTo(toLocalInput(new Date(editing.end_time)))
+      setFrom(toLocalInput(zoned(editing.start_time)))
+      setTo(toLocalInput(zoned(editing.end_time)))
       setReason(editing.reason ?? 'Personal')
     } else {
-      const start = initial.start ? new Date(initial.start) : new Date()
-      const end = initial.end ? new Date(initial.end) : addHours(start, 2)
+      const start = initial.start ? zoned(initial.start) : nowZoned()
+      const end = initial.end ? zoned(initial.end) : addHours(start, 2)
       setInstructorId(
         lockedInstructor ?? initial.instructorId ?? instructors[0]?.id ?? '',
       )
@@ -73,8 +76,8 @@ export function UnavailableModal({
 
   const span = useMemo(() => {
     if (!from || !to) return null
-    const start = new Date(from)
-    const end = new Date(to)
+    const start = fromLocalInput(from)
+    const end = fromLocalInput(to)
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null
     if (end <= start) return null
     return { start, end, minutes: minutesOf(start, end) }

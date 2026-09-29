@@ -285,7 +285,8 @@ Secrets (Supabase dashboard → Edge Functions → Secrets):
 | `SMTP_PORT` | `465` (SSL). Supabase blocks ports 25 and 587 |
 | `SMTP_USER` | `info@sdkdrivingschool.com` |
 | `SMTP_PASS` | that mailbox's password |
-| `EMAIL_COPY_TO` | optional: where customer emails are BCC'd (defaults to `SMTP_USER`; `off` disables) |
+| `SAVE_TO_SENT` | optional: sent emails are filed in the mailbox's Sent folder over IMAP (port 993, same login); `off` disables |
+| `IMAP_HOST` / `IMAP_PORT` | optional: default to `SMTP_HOST` / `993` |
 | `RESEND_API_KEY` | only if using Resend instead of SMTP |
 | `EMAIL_FROM` | `SDK Driving School <info@sdkdrivingschool.com>` |
 | `SDK_NOTIFY_EMAIL` | `info@sdkdrivingschool.com` (new-booking alerts, reply-to) |

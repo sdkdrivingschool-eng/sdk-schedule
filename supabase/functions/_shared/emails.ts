@@ -8,6 +8,8 @@
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import nodemailer from 'npm:nodemailer@6.9.16'
+import { ImapFlow } from 'npm:imapflow@1.0.171'
+import { Buffer } from 'node:buffer'
 import { env, siteUrl } from './http.ts'
 
 const TZ = 'Europe/London'
@@ -300,24 +302,60 @@ function smtpTransport() {
   return transporter
 }
 
+/** Builds the exact MIME message once, so what is sent and what is filed match. */
+const composer = nodemailer.createTransport({ streamTransport: true, buffer: true, newline: 'windows' })
+
 async function sendViaSmtp(msg: Message) {
   const mailbox = env('SMTP_USER')
-  // Sending over SMTP does not file a copy in the mailbox's Sent folder, so
-  // BCC customer emails to the mailbox (EMAIL_COPY_TO=off disables it).
-  const copyTo = env('EMAIL_COPY_TO', mailbox)
-  const bcc = copyTo && copyTo !== 'off' && copyTo.toLowerCase() !== msg.to.toLowerCase()
-    ? copyTo
-    : undefined
+  const from = env('EMAIL_FROM', `SDK Driving School <${mailbox}>`)
 
-  await smtpTransport().sendMail({
-    from: env('EMAIL_FROM', `SDK Driving School <${mailbox}>`),
+  const built = await composer.sendMail({
+    from,
     to: msg.to,
-    bcc,
     replyTo: env('SDK_NOTIFY_EMAIL', mailbox),
     subject: msg.subject,
     html: msg.html,
     text: msg.text,
   })
+  const raw = built.message as Uint8Array
+
+  await smtpTransport().sendMail({ envelope: { from: mailbox, to: [msg.to] }, raw })
+
+  // SMTP alone never files a copy in the mailbox, so save the sent message
+  // into the Sent folder over IMAP. It has already gone out, so a failure
+  // here is logged and ignored rather than retried (that would resend it).
+  try {
+    await fileInSent(raw)
+  } catch (err) {
+    console.error('could not file email in Sent folder', err)
+  }
+}
+
+/**
+ * Append a sent message to the mailbox's Sent folder (IMAP over SSL, same
+ * login as SMTP). cPanel/Dovecot usually calls it "INBOX.Sent"; the server's
+ * \Sent special-use flag is preferred when advertised.
+ */
+async function fileInSent(raw: Uint8Array) {
+  if (env('SAVE_TO_SENT', 'on') === 'off') return
+  const client = new ImapFlow({
+    host: env('IMAP_HOST', env('SMTP_HOST')),
+    port: Number(env('IMAP_PORT', '993')),
+    secure: true,
+    auth: { user: env('SMTP_USER'), pass: env('SMTP_PASS') },
+    logger: false,
+  })
+  await client.connect()
+  try {
+    const boxes: Array<{ path: string; specialUse?: string }> = await client.list()
+    const sent =
+      boxes.find((b) => b.specialUse === '\\Sent')?.path ??
+      boxes.find((b) => /^(inbox[./])?sent( items| messages)?$/i.test(b.path))?.path ??
+      'INBOX.Sent'
+    await client.append(sent, Buffer.from(raw), ['\\Seen'])
+  } finally {
+    await client.logout().catch(() => {})
+  }
 }
 
 async function sendViaResend(msg: Message) {

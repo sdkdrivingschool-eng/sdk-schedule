@@ -14,7 +14,8 @@ import { CheckSpamNote, Notice, Panel, PublicLayout } from './PublicLayout'
 import { SlotPicker } from './SlotPicker'
 import { ContactFields, EMPTY_CONTACT, validateContact } from './ContactFields'
 
-const LENGTHS = [60, 90, 120, 150]
+// Online bookings are 2-hour lessons; other lengths are arranged by request.
+const LESSON_MINUTES = 120
 const CONTACT_KEY = 'sdk-book-contact'
 
 const CATEGORY_TITLES = {
@@ -43,7 +44,7 @@ export default function Book() {
 
   const [area, setArea] = useState('standard')
   const [step, setStep] = useState('plans')
-  const [minutes, setMinutes] = useState(120)
+  const [minutes, setMinutes] = useState(LESSON_MINUTES)
   const [start, setStart] = useState(null)
   const [contact, setContact] = useState(() => ({
     ...EMPTY_CONTACT,
@@ -90,7 +91,7 @@ export default function Book() {
     setTimeError(null)
     setRequestDone(null)
     if (plan.category === 'single') setMinutes(plan.lesson_minutes)
-    if (plan.category === 'block') setMinutes((m) => Math.min(m || 120, plan.total_minutes))
+    if (plan.category === 'block') setMinutes(Math.min(LESSON_MINUTES, plan.total_minutes))
     setStep(plan.category === 'intensive' ? 'intensive' : 'time')
   }, [plan])
 
@@ -206,26 +207,10 @@ export default function Book() {
             <Panel>
               <StepTitle n={1} of={3}>Choose a time</StepTitle>
               {plan.category === 'block' && (
-                <div className="mb-5">
-                  <p className="mb-2 text-sm text-fg-muted">
-                    How long should your first lesson be? It comes off your{' '}
-                    {durationLabel(plan.total_minutes)}.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {LENGTHS.filter((m) => m <= plan.total_minutes).map((m) => (
-                      <Chip
-                        key={m}
-                        active={minutes === m}
-                        onClick={() => {
-                          setMinutes(m)
-                          setStart(null)
-                        }}
-                      >
-                        {durationLabel(m)}
-                      </Chip>
-                    ))}
-                  </div>
-                </div>
+                <p className="mb-5 text-sm text-fg-muted">
+                  Your first {durationLabel(minutes)} lesson comes off your{' '}
+                  {durationLabel(plan.total_minutes)}.
+                </p>
               )}
               {timeError && (
                 <div className="mb-4">

@@ -7,7 +7,8 @@ import { callBooking, fetchBookingSettings, remember } from '../../lib/publicApi
 import { CheckSpamNote, Notice, Panel, PublicLayout } from './PublicLayout'
 import { SlotPicker } from './SlotPicker'
 
-const LENGTHS = [60, 90, 120, 150]
+// Online bookings are 2-hour lessons; other lengths are arranged by request.
+const LESSON_MINUTES = 120
 const LOGIN_KEY = 'sdk-my-lessons'
 
 /**
@@ -133,12 +134,18 @@ function Summary({ summary, credentials, onRefresh, onSignOut }) {
           )}
         </div>
 
-        {bestBalance >= 60 && !booking && (
+        {bestBalance >= LESSON_MINUTES && !booking && (
           <Button variant="primary" className="mt-4" onClick={() => setBooking(true)}>
             Book my next lesson
           </Button>
         )}
-        {bestBalance < 60 && (
+        {bestBalance > 0 && bestBalance < LESSON_MINUTES && (
+          <p className="mt-4 text-sm text-fg-muted">
+            Online bookings are {durationLabel(LESSON_MINUTES)} lessons. To use your
+            remaining {durationLabel(bestBalance)}, email info@sdkdrivingschool.com.
+          </p>
+        )}
+        {bestBalance < LESSON_MINUTES && (
           <p className="mt-4 text-sm text-fg-muted">
             Need more lessons?{' '}
             <Link to="/book" className="text-fg underline-offset-2 hover:underline">
@@ -151,7 +158,6 @@ function Summary({ summary, credentials, onRefresh, onSignOut }) {
 
       {booking && (
         <BookFromBalance
-          maxMinutes={bestBalance}
           credentials={credentials}
           onDone={() => {
             setBooking(false)
@@ -199,9 +205,8 @@ function Summary({ summary, credentials, onRefresh, onSignOut }) {
   )
 }
 
-function BookFromBalance({ maxMinutes, credentials, onDone, onCancel }) {
-  const lengths = LENGTHS.filter((m) => m <= maxMinutes)
-  const [minutes, setMinutes] = useState(lengths.includes(120) ? 120 : lengths[lengths.length - 1])
+function BookFromBalance({ credentials, onDone, onCancel }) {
+  const minutes = LESSON_MINUTES
   const [start, setStart] = useState(null)
   const [notes, setNotes] = useState('')
   const [busy, setBusy] = useState(false)
@@ -250,26 +255,9 @@ function BookFromBalance({ maxMinutes, credentials, onDone, onCancel }) {
   return (
     <Panel>
       <h2 className="mb-3 text-base font-semibold">Book your next lesson</h2>
-      <p className="mb-2 text-sm text-fg-muted">Lesson length</p>
-      <div className="mb-5 flex flex-wrap gap-2">
-        {lengths.map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => {
-              setMinutes(m)
-              setStart(null)
-            }}
-            className={`rounded-lg px-3.5 py-2 text-sm font-semibold transition-all duration-150 active:scale-95 ${
-              minutes === m
-                ? 'bg-accent text-black'
-                : 'bg-surface-2 text-fg-muted ring-1 ring-line hover:text-fg'
-            }`}
-          >
-            {durationLabel(m)}
-          </button>
-        ))}
-      </div>
+      <p className="mb-5 text-sm text-fg-muted">
+        Lessons are {durationLabel(minutes)} long.
+      </p>
 
       <SlotPicker
         minutes={minutes}

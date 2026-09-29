@@ -95,11 +95,25 @@ export function ContactFields({ value, onChange, errors = {} }) {
         />
       </Field>
 
-      {/* Honeypot: off-screen and skipped by keyboard and screen readers. */}
+      {/*
+        Honeypot: off-screen and skipped by keyboard and screen readers. Named
+        and labelled so browser autofill never recognises it — a "Company"
+        label got autofilled with the customer's organisation, which made real
+        bookings look like bots.
+      */}
       <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
         <label>
-          Company
-          <input tabIndex={-1} autoComplete="off" value={value.company} onChange={set('company')} />
+          Leave this field empty
+          <input
+            tabIndex={-1}
+            type="text"
+            name="hp_leave_empty"
+            autoComplete="one-time-code"
+            data-lpignore="true"
+            data-1p-ignore="true"
+            value={value.company}
+            onChange={set('company')}
+          />
         </label>
       </div>
 

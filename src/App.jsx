@@ -1,8 +1,25 @@
+import { Suspense, lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 import Login from './pages/Login'
 import Schedule from './pages/Schedule'
 import { Button, Spinner } from './components/ui'
+
+// Staff-only screens.
+const Unassigned = lazy(() => import('./pages/Unassigned'))
+const Requests = lazy(() => import('./pages/Requests'))
+const Packages = lazy(() => import('./pages/Packages'))
+
+// Public, no-login customer pages — their own chunk, so a customer never
+// downloads the staff app and staff never download the booking flow.
+const Book = lazy(() => import('./pages/public/Book'))
+const BookSuccess = lazy(() =>
+  import('./pages/public/BookResult').then((m) => ({ default: m.BookSuccess })),
+)
+const BookCancelled = lazy(() =>
+  import('./pages/public/BookResult').then((m) => ({ default: m.BookCancelled })),
+)
+const MyLessons = lazy(() => import('./pages/public/MyLessons'))
 
 /**
  * Where a user lands after signing in, decided by the role in public.users.
@@ -80,20 +97,63 @@ function RootRedirect() {
   return <Navigate to={landingPath(profile)} replace />
 }
 
+/** Admin screens: signed in AND admin_access. RLS enforces the same thing. */
+function RequireAdmin({ children }) {
+  const { isAdmin } = useAuth()
+  return (
+    <RequireAuth>
+      {isAdmin ? children : <Navigate to="/schedule" replace />}
+    </RequireAuth>
+  )
+}
+
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginRoute />} />
-      <Route
-        path="/schedule"
-        element={
-          <RequireAuth>
-            <Schedule />
-          </RequireAuth>
-        }
-      />
-      <Route path="/" element={<RootRedirect />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <Suspense fallback={<FullPageSpinner />}>
+      <Routes>
+        {/* Public customer pages — no login. */}
+        <Route path="/book" element={<Book />} />
+        <Route path="/book/success" element={<BookSuccess />} />
+        <Route path="/book/cancelled" element={<BookCancelled />} />
+        <Route path="/my-lessons" element={<MyLessons />} />
+
+        {/* Staff. */}
+        <Route path="/login" element={<LoginRoute />} />
+        <Route
+          path="/schedule"
+          element={
+            <RequireAuth>
+              <Schedule />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/unassigned"
+          element={
+            <RequireAdmin>
+              <Unassigned />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/requests"
+          element={
+            <RequireAdmin>
+              <Requests />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/packages"
+          element={
+            <RequireAdmin>
+              <Packages />
+            </RequireAdmin>
+          }
+        />
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   )
 }

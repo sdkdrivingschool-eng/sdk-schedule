@@ -42,6 +42,17 @@ export function describeWriteError(error) {
     return 'That time conflicts with something already in the schedule.'
   }
 
+  // Codes raised by the online-booking database functions.
+  if (text.includes('INSTRUCTOR_BUSY')) {
+    return 'That instructor is no longer free at this time. Pick another.'
+  }
+  if (text.includes('NOT_CONFIRMED')) {
+    return 'Only paid, confirmed lessons can be assigned.'
+  }
+  if (text.includes('NOT_AN_INSTRUCTOR')) {
+    return 'Lessons can only be assigned to instructors.'
+  }
+
   // RLS rejection surfaces as an empty result or a 42501.
   if (error.code === '42501' || text.includes('row-level security')) {
     return "You don't have permission to change this."
@@ -181,12 +192,189 @@ export async function updateBooking(id, patch) {
     .single()
 
   if (error) throw error
+  // Moving or cancelling an online lesson queues a customer email.
+  if (data?.source === 'online') kickEmails()
   return data
 }
 
 export async function cancelBooking(id) {
   return updateBooking(id, { status: 'cancelled' })
 }
+
+// ---------------------------------------------------------------------------
+// Online bookings: assignment, customers, packages, intensive requests.
+// ---------------------------------------------------------------------------
+
+/**
+ * Nudge the process-emails function so an email queued by the change we just
+ * made (lesson confirmed, instructor changed, lesson cancelled...) goes out
+ * now rather than on the next two-minute cron sweep. Fire and forget.
+ */
+export function kickEmails() {
+  fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-emails`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    },
+    body: '{}',
+  }).catch(() => {})
+}
+
+/** Paid lessons (and payment holds) with no instructor yet. Admin only. */
+export async function fetchUnassigned() {
+  const { data, error } = await supabase.rpc('admin_unassigned_bookings')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function fetchUnassignedCount() {
+  const { count, error } = await supabase
+    .from('bookings')
+    .select('id', { count: 'exact', head: true })
+    .is('instructor_id', null)
+    .eq('status', 'confirmed')
+    .gt('end_time', new Date().toISOString())
+  if (error) throw error
+  return count ?? 0
+}
+
+/** Instructors free for exactly this lesson's time. */
+export async function fetchFreeInstructors(bookingId) {
+  const { data, error } = await supabase.rpc('free_instructors_for_booking', {
+    p_booking_id: bookingId,
+  })
+  if (error) throw error
+  return data ?? []
+}
+
+/**
+ * Assign or reassign. The database re-checks the instructor is free under
+ * the schedule lock and queues the customer's email in the same transaction.
+ */
+export async function assignBooking(bookingId, instructorId) {
+  const { error } = await supabase.rpc('assign_booking', {
+    p_booking_id: bookingId,
+    p_instructor_id: instructorId,
+  })
+  if (error) throw error
+  kickEmails()
+}
+
+/** Customer, order and remaining hours behind an online booking. */
+export async function fetchOnlineDetails(booking) {
+  const [customerRes, orderRes, leftRes] = await Promise.all([
+    booking.customer_id
+      ? supabase
+          .from('customers')
+          .select('reg_number, name, email, phone, pickup_address, postcode, area')
+          .eq('id', booking.customer_id)
+          .maybeSingle()
+      : { data: null },
+    booking.order_id
+      ? supabase
+          .from('orders')
+          .select('package_name, category, minutes_total, amount_pence, status, paid_at, attention_reason')
+          .eq('id', booking.order_id)
+          .maybeSingle()
+      : { data: null },
+    booking.order_id
+      ? supabase.rpc('order_minutes_remaining', { p_order_id: booking.order_id })
+      : { data: null },
+  ])
+  return {
+    customer: customerRes.data ?? null,
+    order: orderRes.data ?? null,
+    remaining: typeof leftRes.data === 'number' ? leftRes.data : null,
+  }
+}
+
+/** Latest customer email per booking, for the "was it sent?" indicator. */
+export async function fetchEmailStatus(bookingIds) {
+  if (!bookingIds.length) return {}
+  const { data, error } = await supabase
+    .from('email_outbox')
+    .select('id, booking_id, kind, status, last_error, created_at')
+    .in('booking_id', bookingIds)
+    .not('kind', 'like', 'admin_%')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  const latest = {}
+  for (const row of data ?? []) latest[row.booking_id] ??= row
+  return latest
+}
+
+export async function resendEmail(id) {
+  const { error } = await supabase
+    .from('email_outbox')
+    .update({ status: 'pending', attempts: 0, last_error: null })
+    .eq('id', id)
+  if (error) throw error
+  kickEmails()
+}
+
+/** Paid orders an admin needs to look at (e.g. payment landed after the slot went). */
+export async function fetchAttentionOrders() {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, package_name, amount_pence, paid_at, attention_reason, customers(name, phone, email, reg_number)')
+    .not('attention_reason', 'is', null)
+    .order('paid_at')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function clearAttention(orderId) {
+  const { error } = await supabase
+    .from('orders')
+    .update({ attention_reason: null })
+    .eq('id', orderId)
+  if (error) throw error
+}
+
+export async function fetchIntensiveRequests() {
+  const { data, error } = await supabase
+    .from('intensive_requests')
+    .select('*, customers(name, email, phone, reg_number)')
+    .order('status')
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function updateIntensiveRequest(id, patch) {
+  const { error } = await supabase.from('intensive_requests').update(patch).eq('id', id)
+  if (error) throw error
+}
+
+export async function fetchAllPackages() {
+  const { data, error } = await supabase.from('packages').select('*').order('sort_order')
+  if (error) throw error
+  return data ?? []
+}
+
+export async function updatePackage(id, patch) {
+  const { error } = await supabase
+    .from('packages')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
+  if (error) throw error
+}
+
+export async function fetchSettings() {
+  const { data, error } = await supabase.from('booking_settings').select('*').maybeSingle()
+  if (error) throw error
+  return data
+}
+
+export async function updateSettings(patch) {
+  const { error } = await supabase
+    .from('booking_settings')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', true)
+  if (error) throw error
+}
+
 
 export async function deleteBooking(id) {
   const { error } = await supabase.from('bookings').delete().eq('id', id)

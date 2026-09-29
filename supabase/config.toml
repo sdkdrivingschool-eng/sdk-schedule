@@ -1,0 +1,14 @@
+# Supabase CLI config — only the settings this project relies on.
+project_id = "wdbdmosddtktumfnioqi"
+
+# Customers have no account and Stripe cannot send a Supabase JWT, so these
+# functions authenticate requests themselves (rate limits + DB checks, and the
+# Stripe-Signature header respectively).
+[functions.booking]
+verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.process-emails]
+verify_jwt = false

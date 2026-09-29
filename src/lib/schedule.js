@@ -55,7 +55,7 @@ export const DAY_START_HOUR = 5
 export const DAY_END_HOUR = 20
 
 /** Lesson lengths offered in the booking modal. */
-export const DURATIONS = [90, 120, 150]
+export const DURATIONS = [60, 90, 120, 150]
 
 /** The standard slot — what a new booking starts on. */
 export const DEFAULT_DURATION = 120

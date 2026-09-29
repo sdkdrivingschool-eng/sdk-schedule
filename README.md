@@ -1,8 +1,10 @@
 # SDK Driving School — Scheduling
 
-Internal scheduling app for a small driving school: two admins and three
-instructors share one week-view calendar, book lessons, and mark themselves
-unavailable. No public signup, no student-facing portal.
+Scheduling app for a small driving school: two admins and three instructors
+share one week-view calendar, book lessons, and mark themselves unavailable.
+Customers book and pay online on the public `/book` page (no login); paid
+lessons land unassigned and an admin assigns an instructor. See
+[Online booking](#online-booking).
 
 React (Vite) · Supabase (Auth + Postgres + RLS) · Tailwind CSS v4
 
@@ -198,11 +200,158 @@ Re-verified after the fix: cross-column insert → `42501`; cross-column reassig
 
 ---
 
+## Online booking
+
+Customers never log in. The WordPress site only links to this app; everything
+else happens here.
+
+```
+WordPress "Book" button ──► /book?plan=basic  (public, this app)
+  pick plan → pick time (live availability) → details → pay (Stripe Checkout)
+      │  booking Edge Function: holds the time ("held") for 35 min
+      ▼
+  Stripe ──webhook──► stripe-webhook Edge Function → lesson "confirmed",
+                                                      instructor_id = null
+      ▼
+  Staff app: Unassigned (admins) → Assign → instructor chosen from those free
+      ▼
+  Customer emailed "Your lesson is confirmed" (from info@sdkdrivingschool.com)
+```
+
+### Rules the database enforces
+
+- **Capacity.** Customers book a time, not an instructor. A time is offered
+  only while *(instructors free for the whole lesson) − (unassigned lessons
+  overlapping it) > 0*. Every write that affects capacity takes one advisory
+  lock and re-checks, so simultaneous checkouts cannot overbook.
+- **Holds.** Checkout reserves the time as `held` until the hold expires
+  (35 min, just over Stripe's 30-minute minimum). Abandoned or cancelled
+  checkouts free it; a cron job tidies anything left.
+- **Payment.** Only the Stripe webhook (or `/book/success` asking Stripe
+  directly with the secret key) marks an order paid — never the redirect.
+  Handlers are idempotent, so Stripe retries are harmless.
+- **Late payment into a taken time.** The customer keeps the hours as credit,
+  the order is flagged under *Needs attention*, and both sides are emailed.
+- **Hours balance.** Every paid order is a credit in minutes. A booking
+  spends its length; cancelling it gives the time back. Customers book the
+  rest of a package at `/my-lessons` with their reference (`SDK-XXXXXXXX`)
+  and email.
+- **Contact details for instructors.** Each online lesson's `notes` holds the
+  customer's email, phone, pickup address, reference, package and hours
+  left, so whoever is assigned can call them.
+- **Intensive courses** are requests only (no payment); admins arrange them
+  from *Intensive requests*.
+- Customers can't cancel or move lessons online in v1 — they contact SDK.
+
+### Screens
+
+| Route | Who | What |
+| --- | --- | --- |
+| `/book`, `/book/success`, `/book/cancelled` | public | Plans, booking flow, payment result |
+| `/my-lessons` | public | Balance, upcoming lessons, book from balance |
+| `/unassigned` | admins | Paid lessons waiting for an instructor; Assign |
+| `/requests` | admins | Intensive course requests |
+| `/packages` | admins | Prices, bullet points, show/hide, notice and horizon |
+
+Unassigned lessons (and payment holds) are visible to admins only (RLS).
+Instructors see a lesson's customer details once it is in their column.
+
+### Database objects
+
+Migrations `…0008`–`…0014` add `packages`, `customers`, `orders`,
+`intensive_requests`, `booking_settings`, `booking_assignments` (history),
+`email_outbox`, `stripe_events`, `rate_limits`, and extend `bookings` with
+`customer_id`, `order_id`, `source`, `hold_expires_at`, `assigned_by/at`
+(`instructor_id` is now nullable; status adds `held` and `expired`).
+The anon key can only read active packages and settings and call
+`get_available_slots` / `get_available_days`. Everything else goes through the
+Edge Functions with the service role.
+
+### Edge Functions (`supabase/functions/`)
+
+| Function | Purpose | JWT |
+| --- | --- | --- |
+| `booking` | Public API: checkout, status, release, lookup, book from balance, intensive request | off (validated + rate limited) |
+| `stripe-webhook` | Confirms/expires orders | off (Stripe signature) |
+| `process-emails` | Sends queued emails via Resend; also run by pg_cron every 2 min | off (only sends what is queued) |
+
+Secrets (Supabase dashboard → Edge Functions → Secrets):
+
+| Secret | Value |
+| --- | --- |
+| `STRIPE_SECRET_KEY` | `sk_test_…` while testing, `sk_live_…` when live |
+| `STRIPE_WEBHOOK_SECRET` | `whsec_…` from the Stripe webhook endpoint |
+| `SMTP_HOST` | SDK's mail server, e.g. `mail.sdkdrivingschool.com` (cPanel → Connect Devices) |
+| `SMTP_PORT` | `465` (SSL). Supabase blocks ports 25 and 587 |
+| `SMTP_USER` | `info@sdkdrivingschool.com` |
+| `SMTP_PASS` | that mailbox's password |
+| `EMAIL_COPY_TO` | optional: where customer emails are BCC'd (defaults to `SMTP_USER`; `off` disables) |
+| `RESEND_API_KEY` | only if using Resend instead of SMTP |
+| `EMAIL_FROM` | `SDK Driving School <info@sdkdrivingschool.com>` |
+| `SDK_NOTIFY_EMAIL` | `info@sdkdrivingschool.com` (new-booking alerts, reply-to) |
+| `PUBLIC_SITE_URL` | this app's public URL, e.g. `https://book.sdkdrivingschool.com` |
+
+Emails are sent through SDK's own mailbox over SMTP when the `SMTP_*` secrets
+are set, otherwise through Resend. Until one is configured, emails wait in
+`email_outbox`. Anything older
+than two days is skipped rather than sent late.
+
+Deploy with the Supabase CLI (`supabase/config.toml` turns JWT checks off for
+these three):
+
+```bash
+supabase functions deploy booking stripe-webhook process-emails
+```
+
+### Stripe setup
+
+1. In Stripe (test mode first) → Developers → Webhooks → add endpoint
+   `https://<project-ref>.supabase.co/functions/v1/stripe-webhook` with events
+   `checkout.session.completed`, `checkout.session.expired`,
+   `checkout.session.async_payment_succeeded`,
+   `checkout.session.async_payment_failed`.
+2. Copy its signing secret into `STRIPE_WEBHOOK_SECRET` and the API secret key
+   into `STRIPE_SECRET_KEY`.
+3. Test with card `4242 4242 4242 4242`, any future expiry, any CVC.
+
+**Going live:** the owner creates the Stripe account in SDK's name, with SDK's
+UK bank account, and invites the developer. Repeat steps 1–2 in live mode with
+live keys. Verify `sdkdrivingschool.com` in Resend (DNS records) so emails
+come from `info@sdkdrivingschool.com`.
+
+### WordPress button links
+
+Point each button at `PUBLIC_SITE_URL` plus one of these:
+
+| Plan | Link |
+| --- | --- |
+| All plans | `/book` |
+| 1 hour lesson (£50) | `/book?plan=payg-1h` |
+| 1.5 hour lesson (£65) | `/book?plan=payg-1-5h` |
+| 2 hour lesson (£80) | `/book?plan=payg-2h` |
+| 2.5 hour lesson (£100) | `/book?plan=payg-2-5h` |
+| Basic, 10 hrs (£380) | `/book?plan=basic` |
+| Standard, 20 hrs (£750) | `/book?plan=standard` |
+| Premium, 30 hrs (£1120) | `/book?plan=premium` |
+| Surrey 1 hour (£55) | `/book?plan=surrey-1h` |
+| Surrey 1.5 hour (£70) | `/book?plan=surrey-1-5h` |
+| Surrey 2 hour (£85) | `/book?plan=surrey-2h` |
+| Surrey 2.5 hour (£105) | `/book?plan=surrey-2-5h` |
+| Surrey 10 hrs (£400) | `/book?plan=surrey-10h` |
+| Surrey 20 hrs (£790) | `/book?plan=surrey-20h` |
+| Intensive 10 hrs (£750) | `/book?plan=intensive-10` |
+| Intensive 20 hrs (£1250) | `/book?plan=intensive-20` |
+| Intensive 30 hrs (£1600) | `/book?plan=intensive-30` |
+| Customer's lessons | `/my-lessons` |
+
+The pay-as-you-go 10/20/30 hr blocks cost the same as Basic/Standard/Premium,
+so link those buttons to `basic`, `standard` and `premium`.
+
 ## Not in v1
 
-Deliberately out of scope: payments, SMS/email reminders, a student
-self-booking portal, recurring lesson templates, reporting/analytics, and a
-proper `students` table.
+Deliberately out of scope: SMS reminders, customers cancelling or moving
+lessons online, automatic scheduling of intensive courses, recurring lesson
+templates, and reporting/analytics.
 
 ## Scripts
 

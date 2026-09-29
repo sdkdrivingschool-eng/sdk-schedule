@@ -14,6 +14,7 @@ import {
   deleteBlock,
   deleteBooking,
   describeWriteError,
+  fetchOnlineDetails,
 } from '../lib/api'
 
 /**
@@ -34,10 +35,28 @@ export function DetailPanel({
   profile,
   onEdit,
   onChanged,
+  onReassign,
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [online, setOnline] = useState(null)
+
+  // Online bookings carry a customer record and a package balance; load them
+  // so the instructor sees who to call and how many hours are left.
+  const onlineRow = segment?.kind === 'booking' && segment.row?.source === 'online' ? segment.row : null
+  useEffect(() => {
+    setOnline(null)
+    if (!open || !onlineRow) return
+    let active = true
+    fetchOnlineDetails(onlineRow)
+      .then((d) => active && setOnline(d))
+      .catch((err) => console.error('online details failed', err))
+    return () => {
+      active = false
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, onlineRow?.id])
 
   /*
    * The panel is always mounted — closing only makes the modal render null —
@@ -89,6 +108,11 @@ export function DetailPanel({
             <Button onClick={onClose} disabled={busy}>
               Close
             </Button>
+            {isBooking && !cancelled && row.source === 'online' && profile?.admin_access && onReassign && (
+              <Button onClick={() => onReassign(row)} disabled={busy}>
+                Reassign
+              </Button>
+            )}
             <Button onClick={() => onEdit(segment)} disabled={busy}>
               Edit
             </Button>
@@ -161,6 +185,38 @@ export function DetailPanel({
               >
                 {cancelled ? 'Cancelled' : 'Confirmed'}
               </span>
+            </Row>
+          )}
+
+          {online?.customer && (
+            <>
+              <Row label="Email">
+                <a
+                  href={`mailto:${online.customer.email}`}
+                  className="text-fg transition-colors duration-150 hover:text-white hover:underline"
+                >
+                  {online.customer.email}
+                </a>
+              </Row>
+              <Row label="Pickup">
+                {[online.customer.pickup_address, online.customer.postcode].filter(Boolean).join(', ')}
+                {online.customer.area === 'surrey' && ' (Surrey)'}
+              </Row>
+              <Row label="Ref">
+                <span className="tabular">{online.customer.reg_number}</span>
+              </Row>
+            </>
+          )}
+
+          {online?.order && (
+            <Row label="Package">
+              {online.order.package_name}
+              {online.order.category === 'block' && online.remaining != null && (
+                <span className="text-fg-muted">
+                  {' '}
+                  · {durationLabel(online.remaining)} of {durationLabel(online.order.minutes_total)} left
+                </span>
+              )}
             </Row>
           )}
 

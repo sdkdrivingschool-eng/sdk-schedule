@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { addDays, addWeeks, format, isSameDay } from 'date-fns'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { fetchSchedule, fetchUsers } from '../lib/api'
 import { nowZoned, roleLabel, weekDays, weekStart } from '../lib/schedule'
@@ -9,13 +9,15 @@ import { Legend } from '../components/ScheduleSegment'
 import { BookingModal } from '../components/BookingModal'
 import { UnavailableModal } from '../components/UnavailableModal'
 import { DetailPanel } from '../components/DetailPanel'
-import { Sidebar } from '../components/Sidebar'
+import { AssignModal } from '../components/AssignModal'
+import { StaffShell, useUnassignedCount } from '../components/StaffShell'
 import { Button, ErrorNote, Spinner } from '../components/ui'
 
 const ALL = 'all'
 
-export default function Schedule() {
-  const { profile, isAdmin, signOut } = useAuth()
+function ScheduleScreen() {
+  const { profile, isAdmin } = useAuth()
+  const { count: unassignedCount } = useUnassignedCount()
 
   const [users, setUsers] = useState([])
   const [bookings, setBookings] = useState([])
@@ -129,190 +131,186 @@ export default function Schedule() {
   const closeDialog = () => setDialog({ type: null })
 
   return (
-    <div className="flex min-h-dvh bg-black">
-      <Sidebar profile={profile} onSignOut={signOut} />
-
-      <div className="min-w-0 flex-1">
-        {/* Compact top bar — the sidebar is hidden below `lg`, this replaces it. */}
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-line bg-black/90 px-4 py-3 backdrop-blur lg:hidden">
-          <div className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-[10px] font-bold text-black">
-              SDK
-            </div>
-            <span className="text-sm font-semibold text-fg">Scheduler</span>
-          </div>
-          <Button variant="ghost" onClick={signOut} className="px-2">
-            <span className="sr-only">Sign out</span>
-            <SignOutIcon />
-          </Button>
-        </header>
-
-        {loading ? (
-          <div className="flex h-[70dvh] items-center justify-center text-fg-subtle">
-            <Spinner className="h-6 w-6" />
-          </div>
-        ) : (
-          <main className="animate-fade-in-up mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
-            {/* Page header */}
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-                  Schedule
-                </h1>
-                <p className="mt-1 flex items-center gap-1.5 text-sm text-fg-muted">
-                  {profile?.name}
-                  <span className="rounded-full bg-white px-2 py-px text-[10px] font-semibold tracking-wide text-black uppercase">
-                    {roleLabel(profile)}
-                  </span>
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button onClick={() => setDialog({ type: 'unavailable' })}>
-                  <span className="hidden sm:inline">Mark unavailable</span>
-                  <span className="sm:hidden">Unavailable</span>
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => setDialog({ type: 'booking' })}
-                >
-                  <PlusIcon />
-                  <span className="hidden sm:inline">New booking</span>
-                  <span className="sm:hidden">Book</span>
-                </Button>
-              </div>
-            </div>
-
-            {/* View toggle — separate pills, not a shared segmented track */}
-            <div className="mt-6 flex gap-2">
-              {['week', 'day'].map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setView(v)}
-                  className={`rounded-lg px-4 py-1.5 text-xs font-semibold tracking-wide uppercase transition-all duration-150 active:scale-95 ${
-                    view === v
-                      ? 'bg-accent text-black'
-                      : 'border border-line bg-surface text-fg-muted hover:border-line-strong hover:text-fg'
-                  }`}
-                >
-                  {v}
-                </button>
-              ))}
-            </div>
-
-            {/* Instructor filter — bordered toolbar, active tab reads as a pressed pill */}
-            <div className="mt-3 overflow-x-auto rounded-xl border border-line bg-surface p-1.5">
-              <nav className="flex gap-1" aria-label="Instructor">
-                <FilterTab
-                  active={tab === ALL}
-                  onClick={() => setTab(ALL)}
-                  icon={<GridIcon />}
-                >
-                  All instructors
-                </FilterTab>
-                {instructors.map((i) => (
-                  <FilterTab
-                    key={i.id}
-                    active={tab === i.id}
-                    onClick={() => setTab(i.id)}
-                    icon={<PersonIcon />}
-                  >
-                    {i.name}
-                    {i.id === profile?.id && (
-                      <span className="ml-1 normal-case opacity-60">
-                        (you)
-                      </span>
-                    )}
-                  </FilterTab>
-                ))}
-              </nav>
-            </div>
-
-            {error && (
-              <div className="mt-3">
-                <ErrorNote>{error}</ErrorNote>
-              </div>
-            )}
-
-            {/* Period nav + legend — its own bordered card, sits directly above the grid */}
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3">
-              <div className="flex items-center gap-1.5">
-                <Button onClick={() => step(-1)} className="px-2">
-                  <span className="sr-only">Previous</span>
-                  <Chevron dir="left" />
-                </Button>
-                <span className="tabular px-1 text-sm font-semibold text-fg">
-                  {periodLabel}
+    <>
+      {loading ? (
+        <div className="flex h-[70dvh] items-center justify-center text-fg-subtle">
+          <Spinner className="h-6 w-6" />
+        </div>
+      ) : (
+        <main className="animate-fade-in-up mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+          {/* Page header */}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+                Schedule
+              </h1>
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-fg-muted">
+                {profile?.name}
+                <span className="rounded-full bg-white px-2 py-px text-[10px] font-semibold tracking-wide text-black uppercase">
+                  {roleLabel(profile)}
                 </span>
-                <Button onClick={() => step(1)} className="px-2">
-                  <span className="sr-only">Next</span>
-                  <Chevron dir="right" />
-                </Button>
-                <Button onClick={() => setAnchor(nowZoned())} className="ml-1">
-                  Today
-                </Button>
-              </div>
-
-              <Legend />
+              </p>
             </div>
 
-            {/* Day view needs a day picker within the week */}
-            {view === 'day' && (
-              <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-                {days.map((d) => {
-                  const active = isSameDay(d, anchor)
-                  return (
-                    <button
-                      key={d.toISOString()}
-                      type="button"
-                      onClick={() => setAnchor(d)}
-                      className={`flex min-w-14 flex-col items-center rounded-lg px-2.5 py-1.5 text-xs transition-all duration-150 active:scale-95 ${
-                        active
-                          ? 'bg-accent text-black'
-                          : 'bg-surface text-fg-muted ring-1 ring-line hover:bg-surface-2 hover:text-fg'
-                      }`}
-                    >
-                      <span className="uppercase opacity-70">
-                        {format(d, 'EEE')}
-                      </span>
-                      <span className="tabular text-base leading-tight font-semibold">
-                        {format(d, 'd')}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setDialog({ type: 'unavailable' })}>
+                <span className="hidden sm:inline">Mark unavailable</span>
+                <span className="sm:hidden">Unavailable</span>
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => setDialog({ type: 'booking' })}
+              >
+                <PlusIcon />
+                <span className="hidden sm:inline">New booking</span>
+                <span className="sm:hidden">Book</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* View toggle — separate pills, not a shared segmented track */}
+          <div className="mt-6 flex gap-2">
+            {['week', 'day'].map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={`rounded-lg px-4 py-1.5 text-xs font-semibold tracking-wide uppercase transition-all duration-150 active:scale-95 ${
+                  view === v
+                    ? 'bg-accent text-black'
+                    : 'border border-line bg-surface text-fg-muted hover:border-line-strong hover:text-fg'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+
+          {/* Instructor filter — bordered toolbar, active tab reads as a pressed pill */}
+          <div className="mt-3 overflow-x-auto rounded-xl border border-line bg-surface p-1.5">
+            <nav className="flex gap-1" aria-label="Instructor">
+              <FilterTab
+                active={tab === ALL}
+                onClick={() => setTab(ALL)}
+                icon={<GridIcon />}
+              >
+                All instructors
+              </FilterTab>
+              {instructors.map((i) => (
+                <FilterTab
+                  key={i.id}
+                  active={tab === i.id}
+                  onClick={() => setTab(i.id)}
+                  icon={<PersonIcon />}
+                >
+                  {i.name}
+                  {i.id === profile?.id && (
+                    <span className="ml-1 normal-case opacity-60">
+                      (you)
+                    </span>
+                  )}
+                </FilterTab>
+              ))}
+            </nav>
+          </div>
+
+          {isAdmin && unassignedCount > 0 && (
+            <Link
+              to="/unassigned"
+              className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-200 ring-1 ring-amber-500/25 transition-colors hover:bg-amber-500/15"
+            >
+              <span>
+                <strong className="font-semibold">{unassignedCount}</strong>{' '}
+                online {unassignedCount === 1 ? 'lesson is' : 'lessons are'} waiting
+                for an instructor.
+              </span>
+              <span className="font-semibold whitespace-nowrap">Assign →</span>
+            </Link>
+          )}
+
+          {error && (
+            <div className="mt-3">
+              <ErrorNote>{error}</ErrorNote>
+            </div>
+          )}
+
+          {/* Period nav + legend — its own bordered card, sits directly above the grid */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+            <div className="flex items-center gap-1.5">
+              <Button onClick={() => step(-1)} className="px-2">
+                <span className="sr-only">Previous</span>
+                <Chevron dir="left" />
+              </Button>
+              <span className="tabular px-1 text-sm font-semibold text-fg">
+                {periodLabel}
+              </span>
+              <Button onClick={() => step(1)} className="px-2">
+                <span className="sr-only">Next</span>
+                <Chevron dir="right" />
+              </Button>
+              <Button onClick={() => setAnchor(nowZoned())} className="ml-1">
+                Today
+              </Button>
+            </div>
+
+            <Legend />
+          </div>
+
+          {/* Day view needs a day picker within the week */}
+          {view === 'day' && (
+            <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+              {days.map((d) => {
+                const active = isSameDay(d, anchor)
+                return (
+                  <button
+                    key={d.toISOString()}
+                    type="button"
+                    onClick={() => setAnchor(d)}
+                    className={`flex min-w-14 flex-col items-center rounded-lg px-2.5 py-1.5 text-xs transition-all duration-150 active:scale-95 ${
+                      active
+                        ? 'bg-accent text-black'
+                        : 'bg-surface text-fg-muted ring-1 ring-line hover:bg-surface-2 hover:text-fg'
+                    }`}
+                  >
+                    <span className="uppercase opacity-70">
+                      {format(d, 'EEE')}
+                    </span>
+                    <span className="tabular text-base leading-tight font-semibold">
+                      {format(d, 'd')}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="mt-4">
+            {visibleInstructors.length === 0 ? (
+              <p className="rounded-xl bg-surface p-8 text-center text-sm text-fg-subtle ring-1 ring-line">
+                No instructors found. Add users with role “instructor”.
+              </p>
+            ) : view === 'week' ? (
+              <WeekGrid
+                days={days}
+                instructors={visibleInstructors}
+                bookings={bookings}
+                blocks={blocks}
+                profile={profile}
+                onSelect={onSelectSegment}
+              />
+            ) : (
+              <DayGrid
+                day={anchor}
+                instructors={visibleInstructors}
+                bookings={bookings}
+                blocks={blocks}
+                profile={profile}
+                onSelect={onSelectSegment}
+              />
             )}
-
-            <div className="mt-4">
-              {visibleInstructors.length === 0 ? (
-                <p className="rounded-xl bg-surface p-8 text-center text-sm text-fg-subtle ring-1 ring-line">
-                  No instructors found. Add users with role “instructor”.
-                </p>
-              ) : view === 'week' ? (
-                <WeekGrid
-                  days={days}
-                  instructors={visibleInstructors}
-                  bookings={bookings}
-                  blocks={blocks}
-                  profile={profile}
-                  onSelect={onSelectSegment}
-                />
-              ) : (
-                <DayGrid
-                  day={anchor}
-                  instructors={visibleInstructors}
-                  bookings={bookings}
-                  blocks={blocks}
-                  profile={profile}
-                  onSelect={onSelectSegment}
-                />
-              )}
-            </div>
-          </main>
-        )}
-      </div>
+          </div>
+        </main>
+      )}
 
       <BookingModal
         open={dialog.type === 'booking'}
@@ -349,8 +347,16 @@ export default function Schedule() {
             editing: segment.row,
           })
         }
+        onReassign={(row) => setDialog({ type: 'assign', booking: row })}
       />
-    </div>
+
+      <AssignModal
+        open={dialog.type === 'assign'}
+        booking={dialog.booking}
+        onClose={closeDialog}
+        onAssigned={load}
+      />
+    </>
   )
 }
 
@@ -423,20 +429,10 @@ function PersonIcon() {
   )
 }
 
-function SignOutIcon() {
+export default function Schedule() {
   return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      className="h-5 w-5"
-    >
-      <path
-        d="M12 7V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h6a1 1 0 001-1v-2M9 10h8m0 0l-2.5-2.5M17 10l-2.5 2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <StaffShell>
+      <ScheduleScreen />
+    </StaffShell>
   )
 }

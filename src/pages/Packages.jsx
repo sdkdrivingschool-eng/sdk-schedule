@@ -11,7 +11,7 @@ import {
 } from '../lib/api'
 
 const CATEGORY = { single: 'Single lesson', block: 'Package', intensive: 'Intensive' }
-const AREA = { standard: 'Outside Surrey', surrey: 'Surrey', any: 'Any area' }
+const AREA = { standard: 'London', surrey: 'Surrey', any: 'Any area' }
 
 const toPounds = (pence) => (pence == null ? '' : (pence / 100).toFixed(2).replace(/\.00$/, ''))
 const toPence = (pounds) => {
@@ -88,7 +88,6 @@ function SettingsForm({ settings, onSaved }) {
   const [form, setForm] = useState({
     min_notice_hours: settings.min_notice_hours,
     horizon_days: settings.horizon_days,
-    test_payments: settings.test_payments,
   })
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState(null)
@@ -102,7 +101,6 @@ function SettingsForm({ settings, onSaved }) {
       await updateSettings({
         min_notice_hours: Number(form.min_notice_hours),
         horizon_days: Number(form.horizon_days),
-        test_payments: form.test_payments,
       })
       setMessage('Saved.')
       onSaved()
@@ -138,26 +136,6 @@ function SettingsForm({ settings, onSaved }) {
           />
         </Field>
       </div>
-      <label
-        className={`mt-4 flex items-start gap-2.5 rounded-lg px-3 py-2.5 text-sm ring-1 ${
-          form.test_payments
-            ? 'bg-amber-500/10 text-amber-200 ring-amber-500/25'
-            : 'bg-surface-2 text-fg-muted ring-line'
-        }`}
-      >
-        <input
-          type="checkbox"
-          checked={form.test_payments}
-          onChange={(e) => setForm({ ...form, test_payments: e.target.checked })}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-white"
-        />
-        <span>
-          <strong className="font-semibold">Test payments</strong> — while no
-          Stripe key is set up, “Pay” books the lesson as paid without taking a
-          card. Turn this off before the booking page goes public. It stops
-          working by itself once a Stripe key is added.
-        </span>
-      </label>
       <div className="mt-3 flex items-center justify-end gap-3">
         {message && <span className="text-xs text-emerald-300">{message}</span>}
         <ErrorNote>{error}</ErrorNote>

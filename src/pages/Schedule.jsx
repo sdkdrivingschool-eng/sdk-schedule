@@ -3,7 +3,7 @@ import { addDays, addWeeks, format, isSameDay } from 'date-fns'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { fetchSchedule, fetchUsers } from '../lib/api'
-import { nowZoned, roleLabel, weekDays, weekStart } from '../lib/schedule'
+import { nowZoned, roleLabel, toDateInput, weekDays, weekStart } from '../lib/schedule'
 import { DayGrid, WeekGrid } from '../components/ScheduleGrid'
 import { Legend } from '../components/ScheduleSegment'
 import { BookingModal } from '../components/BookingModal'
@@ -251,6 +251,21 @@ function ScheduleScreen() {
               <Button onClick={() => setAnchor(nowZoned())} className="ml-1">
                 Today
               </Button>
+              <label className="ml-1 flex items-center gap-1.5 text-xs text-fg-muted">
+                <span className="sr-only sm:not-sr-only">Go to</span>
+                <input
+                  type="date"
+                  value={toDateInput(anchor)}
+                  min="2020-01-01"
+                  max="2100-12-31"
+                  onChange={(e) => {
+                    const [y, m, d] = e.target.value.split('-').map(Number)
+                    if (y && m && d) setAnchor(new Date(y, m - 1, d))
+                  }}
+                  aria-label="Jump to date"
+                  className="rounded-lg bg-surface-2 px-2.5 py-1.5 text-sm text-fg ring-1 ring-line [color-scheme:dark] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                />
+              </label>
             </div>
 
             <Legend />

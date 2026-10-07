@@ -61,7 +61,7 @@ export const DURATIONS = [60, 90, 120, 150]
 export const DEFAULT_DURATION = 120
 
 /** Reasons allowed by the availability_blocks check constraint. */
-export const REASONS = ['Personal', 'Sick', 'Training', 'Other']
+export const REASONS = ['Personal', 'Sick', 'Training', 'Prayer', 'Other']
 
 /** Shortest bookable gap — no point offering a slot no lesson would fit. */
 export const MIN_LESSON_MINUTES = Math.min(...DURATIONS)

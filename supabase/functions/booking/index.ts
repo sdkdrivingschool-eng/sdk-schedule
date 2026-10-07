@@ -127,33 +127,6 @@ async function checkout(req: Request, body: Body) {
 
   const site = siteUrl()
 
-  // Test payment mode (see migration …0015): no Stripe key yet and the admin
-  // switch is on -> treat the order as paid right away. Ignored as soon as a
-  // real key exists, so it can never bypass live payments.
-  if (!env('STRIPE_SECRET_KEY')) {
-    const { data: settings } = await db
-      .from('booking_settings').select('test_payments').maybeSingle()
-    if (settings?.test_payments) {
-      const sessionId = `cs_testmode_${hold.order_id}`
-      await db.from('orders').update({ stripe_session_id: sessionId }).eq('id', hold.order_id)
-      const { error: confirmError } = await db.rpc('confirm_order', {
-        p_order_id: hold.order_id,
-        p_session_id: sessionId,
-        p_payment_intent: 'test_payment',
-      })
-      if (confirmError) {
-        console.error('test-mode confirm failed', confirmError)
-        await db.rpc('expire_order', { p_order_id: hold.order_id })
-        return json({ error: friendly(null) }, 500)
-      }
-      kickEmails()
-      // Return to whichever site the customer is on (localhost while testing).
-      const requested = req.headers.get('origin') ?? ''
-      const origin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(requested) ? requested : site
-      return json({ url: `${origin}/book/success?session_id=${sessionId}`, test: true })
-    }
-  }
-
   try {
     const session = await stripe<{ id: string; url: string }>('POST', '/checkout/sessions', {
       mode: 'payment',

@@ -275,16 +275,6 @@ export default function Book() {
                 </Row>
               </dl>
 
-              {settings?.test_payments && (
-                <div className="mt-4">
-                  <Notice tone="warning">
-                    <strong>Test mode:</strong> no card is needed. Pressing Pay
-                    books the lesson as if it had been paid, unless a Stripe
-                    key has been set up, in which case real Stripe is used.
-                  </Notice>
-                </div>
-              )}
-
               <div className="mt-4">
                 <Notice>
                   Your time is held while you pay. Once payment clears you'll get
@@ -410,7 +400,7 @@ function AreaPicker({ area, onArea }) {
       <p className="mb-2 text-sm font-medium text-fg-muted">Where are you based?</p>
       <div className="flex gap-2">
         <Chip active={area === 'standard'} onClick={() => onArea('standard')}>
-          Outside Surrey
+          London
         </Chip>
         <Chip active={area === 'surrey'} onClick={() => onArea('surrey')}>
           Surrey
@@ -423,7 +413,7 @@ function AreaPicker({ area, onArea }) {
 function AreaNote({ area }) {
   return (
     <p className="mb-4 text-xs text-fg-subtle">
-      Area: {area === 'surrey' ? 'Surrey' : 'Outside Surrey'} (from the plan you chose).
+      Area: {area === 'surrey' ? 'Surrey' : 'London'} (from the plan you chose).
     </p>
   )
 }

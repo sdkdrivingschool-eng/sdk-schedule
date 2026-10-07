@@ -28,7 +28,7 @@ export async function fetchPackages() {
 export async function fetchBookingSettings() {
   const { data, error } = await supabase
     .from('booking_settings')
-    .select('min_notice_hours, horizon_days, slot_step_minutes, test_payments')
+    .select('min_notice_hours, horizon_days, slot_step_minutes')
     .maybeSingle()
 
   if (error) throw error

@@ -3,7 +3,7 @@ import { addDays, addWeeks, format, isSameDay } from 'date-fns'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { fetchSchedule, fetchUsers } from '../lib/api'
-import { nowZoned, roleLabel, toDateInput, weekDays, weekStart } from '../lib/schedule'
+import { fromDateInput, nowZoned, roleLabel, toDateInput, weekDays, weekStart } from '../lib/schedule'
 import { DayGrid, WeekGrid } from '../components/ScheduleGrid'
 import { Legend } from '../components/ScheduleSegment'
 import { BookingModal } from '../components/BookingModal'
@@ -259,8 +259,8 @@ function ScheduleScreen() {
                   min="2020-01-01"
                   max="2100-12-31"
                   onChange={(e) => {
-                    const [y, m, d] = e.target.value.split('-').map(Number)
-                    if (y && m && d) setAnchor(new Date(y, m - 1, d))
+                    const picked = fromDateInput(e.target.value)
+                    if (picked) setAnchor(picked)
                   }}
                   aria-label="Jump to date"
                   className="rounded-lg bg-surface-2 px-2.5 py-1.5 text-sm text-fg ring-1 ring-line [color-scheme:dark] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"

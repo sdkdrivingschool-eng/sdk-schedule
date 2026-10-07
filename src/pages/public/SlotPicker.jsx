@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { addDays, format, isSameDay, startOfDay } from 'date-fns'
+import { addDays, differenceInCalendarWeeks, format, isSameDay, startOfDay } from 'date-fns'
 import { Spinner } from '../../components/ui'
 import {
   fmtTime,
+  fromDateInput,
   nowZoned,
   toDateInput,
   weekStart,
@@ -104,6 +105,16 @@ export function SlotPicker({ minutes, value, onChange, horizonDays = 56, refresh
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day, minutes, refreshKey, focusTick])
 
+  function pickDate(value) {
+    const picked = fromDateInput(value)
+    if (!picked) return
+    const weeks = differenceInCalendarWeeks(picked, today, { weekStartsOn: 1 })
+    if (weeks < 0 || weeks > maxOffset) return
+    autoAdvance.current = false
+    setOffset(weeks)
+    setDay(picked)
+  }
+
   const weekLabel = `${format(days[0], 'd MMM')} – ${format(days[6], 'd MMM')}`
 
   return (
@@ -127,6 +138,19 @@ export function SlotPicker({ minutes, value, onChange, horizonDays = 56, refresh
           }}
         />
       </div>
+
+      <label className="flex items-center justify-between gap-3 text-sm text-fg-muted">
+        <span>Jump to a date</span>
+        <input
+          type="date"
+          min={toDateInput(today)}
+          max={toDateInput(addDays(today, horizonDays))}
+          value={day ? toDateInput(day) : ''}
+          onChange={(e) => pickDate(e.target.value)}
+          aria-label="Pick a date"
+          className="rounded-lg bg-surface-2 px-3 py-1.5 text-sm text-fg ring-1 ring-line [color-scheme:dark] focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        />
+      </label>
 
       <div className="grid grid-cols-7 gap-1.5">
         {days.map((d) => {

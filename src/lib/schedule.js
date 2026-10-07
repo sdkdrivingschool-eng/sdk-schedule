@@ -133,6 +133,11 @@ export const fmtDayNum = (d) => format(d, 'd')
 /** `<input type="datetime-local">` wants this exact shape, no timezone. */
 export const toLocalInput = (d) => format(zoned(d), "yyyy-MM-dd'T'HH:mm")
 export const toDateInput = (d) => format(zoned(d), 'yyyy-MM-dd')
+/** Inverse of toDateInput: a 'yyyy-MM-dd' string -> midnight on that London date. */
+export function fromDateInput(value) {
+  const [y, m, d] = value.split('-').map(Number)
+  return y && m && d ? new TZDate(y, m - 1, d, 0, 0, 0, TIME_ZONE) : null
+}
 
 export function durationLabel(minutes) {
   if (minutes < 60) return `${minutes}m`

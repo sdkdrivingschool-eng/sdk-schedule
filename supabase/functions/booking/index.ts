@@ -56,8 +56,10 @@ function contactFrom(body: Body) {
   if (!POSTCODE_RE.test(postcode)) throw new BadRequest('Please enter a valid UK postcode.')
   const area = body.area === 'surrey' ? 'surrey' : 'standard'
   // Manual and automatic are taught by different instructors, so the choice
-  // decides whose free times count. Never default it — make the customer pick.
-  const transmission = body.transmission
+  // decides whose free times count. The booking page always sends it; a page
+  // cached from before the choice existed sends nothing and gets automatic,
+  // which is what it was showing times for.
+  const transmission = body.transmission ?? 'automatic'
   if (transmission !== 'manual' && transmission !== 'automatic') {
     throw new BadRequest('Please choose manual or automatic.')
   }

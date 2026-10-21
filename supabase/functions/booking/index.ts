@@ -55,6 +55,12 @@ function contactFrom(body: Body) {
   const postcode = str(body.postcode, 10, 'your postcode').toUpperCase()
   if (!POSTCODE_RE.test(postcode)) throw new BadRequest('Please enter a valid UK postcode.')
   const area = body.area === 'surrey' ? 'surrey' : 'standard'
+  // Manual and automatic are taught by different instructors, so the choice
+  // decides whose free times count. Never default it — make the customer pick.
+  const transmission = body.transmission
+  if (transmission !== 'manual' && transmission !== 'automatic') {
+    throw new BadRequest('Please choose manual or automatic.')
+  }
 
   return {
     name: str(body.name, 120, 'your name'),
@@ -63,6 +69,7 @@ function contactFrom(body: Body) {
     pickup_address: str(body.pickup_address, 300, 'your pickup address'),
     postcode,
     area,
+    transmission,
   }
 }
 

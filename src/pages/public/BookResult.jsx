@@ -130,12 +130,21 @@ function Confirmed({ data }) {
               {durationLabel((new Date(b.end_time) - new Date(b.start_time)) / 60000)}
             </div>
           </div>
-          <p className="mt-4 text-sm">
-            <strong>Your instructor will be confirmed shortly.</strong>{' '}
-            <span className="text-fg-muted">
-              We'll email you at {data.email} as soon as they are.
-            </span>
-          </p>
+          {b.instructor ? (
+            <p className="mt-4 text-sm">
+              Your instructor is <strong>{b.instructor}</strong>.{' '}
+              <span className="text-fg-muted">
+                We've emailed the details to {data.email}.
+              </span>
+            </p>
+          ) : (
+            <p className="mt-4 text-sm">
+              <strong>Your instructor will be confirmed shortly.</strong>{' '}
+              <span className="text-fg-muted">
+                We'll email you at {data.email} as soon as they are.
+              </span>
+            </p>
+          )}
         </>
       )}
 

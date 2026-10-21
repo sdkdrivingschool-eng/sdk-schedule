@@ -134,6 +134,7 @@ function lessonRows(ctx: Context, withInstructor: boolean) {
     ['Date', fmtDate(b.start_time)],
     ['Time', `${fmtTime(b.start_time)} – ${fmtTime(b.end_time)}`],
     ['Length', hours(minutes)],
+    ['Gearbox', ctx.order?.transmission === 'manual' ? 'Manual' : ctx.order?.transmission === 'automatic' ? 'Automatic' : null],
     ['Instructor', withInstructor ? ctx.instructorName : null],
     ['Pickup', [c?.pickup_address, c?.postcode].filter(Boolean).join(', ') || null],
     ['Reference', c?.reg_number],
@@ -172,18 +173,29 @@ function build(kind: string, ctx: Context): Message | null {
     case 'payment_received':
       subject = `Payment received — ${ctx.order?.package_name ?? 'your booking'}`
       body = p(`Hi ${first}, thanks for booking with SDK Driving School. We've received your payment of <strong>${esc(money(ctx.order?.amount_pence ?? 0))}</strong> for <strong>${esc(ctx.order?.package_name)}</strong>.`) +
-        (ctx.booking ? p('Your lesson time is reserved:') + lessonRows(ctx, false) +
-          p("<strong>Your instructor will be confirmed shortly.</strong> We'll email you again as soon as they are.")
+        (ctx.booking
+          ? ctx.instructorName
+            ? p('Your lesson is booked:') + lessonRows(ctx, true) +
+              p(`${esc(ctx.instructorName)} will pick you up from the address above.`)
+            : p('Your lesson time is reserved:') + lessonRows(ctx, false) +
+              p("<strong>Your instructor will be confirmed shortly.</strong> We'll email you again as soon as they are.")
           : rows([['Reference', c?.reg_number]])) +
         balanceLine(ctx) +
         p('Keep your reference number — you\'ll need it with your email to see or book lessons.')
       break
 
     case 'booking_received':
-      subject = 'Lesson booked — instructor to be confirmed'
-      body = p(`Hi ${first}, your next lesson is booked:`) + lessonRows(ctx, false) +
-        p("<strong>Your instructor will be confirmed shortly.</strong> We'll email you again as soon as they are.") +
-        balanceLine(ctx)
+      if (ctx.instructorName) {
+        subject = `Lesson booked with ${ctx.instructorName}`
+        body = p(`Hi ${first}, your next lesson is booked:`) + lessonRows(ctx, true) +
+          p(`${esc(ctx.instructorName)} will pick you up from the address above.`) +
+          balanceLine(ctx)
+      } else {
+        subject = 'Lesson booked — instructor to be confirmed'
+        body = p(`Hi ${first}, your next lesson is booked:`) + lessonRows(ctx, false) +
+          p("<strong>Your instructor will be confirmed shortly.</strong> We'll email you again as soon as they are.") +
+          balanceLine(ctx)
+      }
       break
 
     case 'lesson_confirmed':
@@ -235,15 +247,19 @@ function build(kind: string, ctx: Context): Message | null {
     case 'admin_new_booking':
       to = admin
       subject = `New online booking — ${c?.name ?? ''}${ctx.booking ? `, ${fmtDate(ctx.booking.start_time)} ${fmtTime(ctx.booking.start_time)}` : ''}`
-      body = p('A new lesson has been booked online and is waiting to be assigned to an instructor.') +
+      body = p(ctx.instructorName
+          ? `A new manual lesson has been booked online. It is already on ${esc(ctx.instructorName)}'s schedule — nothing to assign.`
+          : 'A new lesson has been booked online and is waiting to be assigned to an instructor.') +
         rows([
           ['Customer', c?.name], ['Phone', c?.phone], ['Email', c?.email],
           ['Pickup', [c?.pickup_address, c?.postcode].filter(Boolean).join(', ')],
           ['Package', ctx.order?.package_name],
+          ['Gearbox', ctx.order?.transmission === 'manual' ? 'Manual' : ctx.order?.transmission === 'automatic' ? 'Automatic' : null],
+          ['Instructor', ctx.instructorName],
           ['Paid', ctx.order ? money(ctx.order.amount_pence) : null],
           ['Lesson', ctx.booking ? `${fmtDate(ctx.booking.start_time)}, ${fmtTime(ctx.booking.start_time)}–${fmtTime(ctx.booking.end_time)}` : 'none booked yet'],
           ['Reference', c?.reg_number],
-        ]) + button(staffLink, 'Assign an instructor')
+        ]) + (ctx.instructorName ? '' : button(staffLink, 'Assign an instructor'))
       break
 
     case 'admin_slot_taken':
@@ -263,6 +279,7 @@ function build(kind: string, ctx: Context): Message | null {
           ['Customer', r?.contact?.name ?? c?.name], ['Phone', r?.contact?.phone ?? c?.phone], ['Email', c?.email],
           ['Pickup', [r?.contact?.pickup_address, r?.contact?.postcode].filter(Boolean).join(', ')],
           ['Course', r?.package_name], ['Preferred start', r ? fmtDate(r.preferred_start_date) : null],
+          ['Gearbox', r?.contact?.transmission === 'manual' ? 'Manual' : r?.contact?.transmission === 'automatic' ? 'Automatic' : null],
           ['Message', r?.contact?.message],
         ]) + button(`${siteUrl()}/requests`, 'Open requests')
       break

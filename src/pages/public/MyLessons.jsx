@@ -104,6 +104,9 @@ function Summary({ summary, credentials, onRefresh, onSignOut }) {
   const upcoming = summary.lessons.filter((l) => new Date(l.end_time) > now)
   // A lesson must fit within a single package's remaining hours.
   const bestBalance = Math.max(0, ...summary.orders.map((o) => o.minutes_remaining))
+  // The database spends the oldest package with enough hours first, so its
+  // gearbox decides whose free times to show.
+  const nextOrder = summary.orders.find((o) => o.minutes_remaining >= LESSON_MINUTES)
   const totalBalance = summary.orders.reduce((sum, o) => sum + o.minutes_remaining, 0)
 
   return (
@@ -158,6 +161,7 @@ function Summary({ summary, credentials, onRefresh, onSignOut }) {
 
       {booking && (
         <BookFromBalance
+          transmission={nextOrder?.transmission ?? 'automatic'}
           credentials={credentials}
           onDone={() => {
             setBooking(false)
@@ -205,7 +209,7 @@ function Summary({ summary, credentials, onRefresh, onSignOut }) {
   )
 }
 
-function BookFromBalance({ credentials, onDone, onCancel }) {
+function BookFromBalance({ transmission, credentials, onDone, onCancel }) {
   const minutes = LESSON_MINUTES
   const [start, setStart] = useState(null)
   const [notes, setNotes] = useState('')
@@ -241,8 +245,10 @@ function BookFromBalance({ credentials, onDone, onCancel }) {
       <Panel>
         <Notice tone="success">
           Booked for {format(zoned(done.start_time), 'EEEE d MMMM')},{' '}
-          {fmtRange(zoned(done.start_time), zoned(done.end_time))}. We'll email
-          you as soon as your instructor is confirmed.
+          {fmtRange(zoned(done.start_time), zoned(done.end_time))}.{' '}
+          {transmission === 'manual'
+            ? "We've emailed you the details, including your instructor."
+            : "We'll email you as soon as your instructor is confirmed."}
         </Notice>
         <CheckSpamNote className="mt-3" />
         <Button className="mt-4" onClick={onDone}>
@@ -256,11 +262,13 @@ function BookFromBalance({ credentials, onDone, onCancel }) {
     <Panel>
       <h2 className="mb-3 text-base font-semibold">Book your next lesson</h2>
       <p className="mb-5 text-sm text-fg-muted">
-        Lessons are {durationLabel(minutes)} long.
+        {transmission === 'manual' ? 'Manual' : 'Automatic'} lessons,{' '}
+        {durationLabel(minutes)} long.
       </p>
 
       <SlotPicker
         minutes={minutes}
+        transmission={transmission}
         value={start}
         onChange={setStart}
         horizonDays={horizon}

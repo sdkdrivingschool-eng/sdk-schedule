@@ -18,8 +18,16 @@ import { fetchAvailableDays, fetchAvailableSlots } from '../../lib/publicApi'
  * get_available_slots), so it always reflects the instructors' real
  * schedules. It is re-read when the tab regains focus and whenever
  * `refreshKey` changes — e.g. after a "that time was just taken" error.
+ * Only instructors who teach `transmission` (manual/automatic) are counted.
  */
-export function SlotPicker({ minutes, value, onChange, horizonDays = 56, refreshKey = 0 }) {
+export function SlotPicker({
+  minutes,
+  transmission,
+  value,
+  onChange,
+  horizonDays = 56,
+  refreshKey = 0,
+}) {
   const today = useMemo(() => startOfDay(nowZoned()), [])
   const maxOffset = Math.ceil(horizonDays / 7)
 
@@ -51,7 +59,7 @@ export function SlotPicker({ minutes, value, onChange, horizonDays = 56, refresh
     let active = true
     setLoadingDays(true)
     setError(null)
-    fetchAvailableDays(toDateInput(days[0]), toDateInput(days[6]), minutes)
+    fetchAvailableDays(toDateInput(days[0]), toDateInput(days[6]), minutes, transmission)
       .then((rows) => {
         if (!active) return
         setAvailable(rows)
@@ -76,7 +84,7 @@ export function SlotPicker({ minutes, value, onChange, horizonDays = 56, refresh
     return () => {
       active = false
     }
-  }, [days, minutes, offset, maxOffset, refreshKey, focusTick])
+  }, [days, minutes, transmission, offset, maxOffset, refreshKey, focusTick])
 
   useEffect(() => {
     if (!day) {
@@ -85,7 +93,7 @@ export function SlotPicker({ minutes, value, onChange, horizonDays = 56, refresh
     }
     let active = true
     setLoadingSlots(true)
-    fetchAvailableSlots(toDateInput(day), minutes)
+    fetchAvailableSlots(toDateInput(day), minutes, transmission)
       .then((rows) => {
         if (!active) return
         setSlots(rows)
@@ -103,7 +111,7 @@ export function SlotPicker({ minutes, value, onChange, horizonDays = 56, refresh
       active = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [day, minutes, refreshKey, focusTick])
+  }, [day, minutes, transmission, refreshKey, focusTick])
 
   function pickDate(value) {
     const picked = fromDateInput(value)

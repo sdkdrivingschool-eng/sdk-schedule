@@ -43,6 +43,7 @@ export default function Book() {
   const [loadError, setLoadError] = useState(null)
 
   const [area, setArea] = useState('standard')
+  const [transmission, setTransmission] = useState(null)
   const [step, setStep] = useState('plans')
   const [minutes, setMinutes] = useState(LESSON_MINUTES)
   const [start, setStart] = useState(null)
@@ -127,6 +128,7 @@ export default function Book() {
         start,
         minutes: plan.category === 'block' ? minutes : null,
         area,
+        transmission,
         ...contact,
       })
       window.location.assign(url)
@@ -145,6 +147,7 @@ export default function Book() {
 
   async function requestIntensive() {
     const errors = validateContact(contact)
+    if (!transmission) errors.transmission = 'Please choose manual or automatic.'
     if (!startDate) errors.startDate = 'Please choose a preferred start date.'
     setContactErrors(errors)
     if (Object.keys(errors).length) return
@@ -156,6 +159,7 @@ export default function Book() {
         plan: plan.slug,
         start_date: startDate,
         area,
+        transmission,
         ...contact,
       })
       setRequestDone(res)
@@ -217,16 +221,32 @@ export default function Book() {
                   <ErrorNote>{timeError}</ErrorNote>
                 </div>
               )}
-              <SlotPicker
-                minutes={minutes}
-                value={start}
-                onChange={(iso) => {
-                  setStart(iso)
+              <GearboxPicker
+                value={transmission}
+                onChange={(t) => {
+                  setTransmission(t)
+                  setStart(null)
                   setTimeError(null)
                 }}
-                horizonDays={settings?.horizon_days ?? 56}
-                refreshKey={refreshKey}
               />
+              {transmission ? (
+                <SlotPicker
+                  key={transmission}
+                  minutes={minutes}
+                  transmission={transmission}
+                  value={start}
+                  onChange={(iso) => {
+                    setStart(iso)
+                    setTimeError(null)
+                  }}
+                  horizonDays={settings?.horizon_days ?? 56}
+                  refreshKey={refreshKey}
+                />
+              ) : (
+                <p className="rounded-lg bg-surface-2 px-3 py-4 text-center text-sm text-fg-muted ring-1 ring-line">
+                  Choose manual or automatic to see the free times.
+                </p>
+              )}
               <div className="mt-5 flex justify-end">
                 <Button variant="primary" disabled={!start} onClick={() => setStep('details')}>
                   Continue
@@ -254,6 +274,7 @@ export default function Book() {
               <StepTitle n={3} of={3}>Check and pay</StepTitle>
               <dl className="space-y-2 text-sm">
                 <Row label="Plan">{plan.name}</Row>
+                <Row label="Gearbox">{GEARBOX_LABELS[transmission]}</Row>
                 <Row label="Lesson">
                   {format(zoned(start), 'EEEE d MMMM')},{' '}
                   {fmtRange(zoned(start), zoned(new Date(new Date(start).getTime() + minutes * 60000)))}{' '}
@@ -277,9 +298,10 @@ export default function Book() {
 
               <div className="mt-4">
                 <Notice>
-                  Your time is held while you pay. Once payment clears you'll get
-                  an email with your booking reference, and another as soon as
-                  your instructor is confirmed.
+                  Your time is held while you pay.{' '}
+                  {transmission === 'manual'
+                    ? "Once payment clears you'll get an email with your booking reference and your instructor's details."
+                    : "Once payment clears you'll get an email with your booking reference, and another as soon as your instructor is confirmed."}
                 </Notice>
                 <CheckSpamNote className="mt-2" />
               </div>
@@ -324,6 +346,7 @@ export default function Book() {
                   dates with you by phone. Tell us when you'd like to start.
                 </p>
                 <AreaPicker area={area} onArea={setArea} />
+                <GearboxPicker value={transmission} onChange={setTransmission} error={contactErrors.transmission} />
                 <div className="mb-4">
                   <Field label="Preferred start date" error={contactErrors.startDate}>
                     <input
@@ -406,6 +429,46 @@ function AreaPicker({ area, onArea }) {
           Surrey
         </Chip>
       </div>
+    </div>
+  )
+}
+
+const GEARBOX_LABELS = { manual: 'Manual', automatic: 'Automatic' }
+
+/** Manual or automatic. Each is taught by different instructors, so the free times depend on it. */
+function GearboxPicker({ value, onChange, error }) {
+  return (
+    <div className="mb-5">
+      <p className="mb-2 text-sm font-medium text-fg-muted">Which car are you learning in?</p>
+      <div role="radiogroup" aria-label="Gearbox" className="grid grid-cols-2 gap-2">
+        {['manual', 'automatic'].map((t) => {
+          const active = value === t
+          return (
+            <button
+              key={t}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(t)}
+              className={`flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-left text-sm font-semibold transition-all duration-150 active:scale-[0.98] ${
+                active
+                  ? 'bg-surface-2 text-fg ring-2 ring-accent'
+                  : 'bg-surface-2 text-fg-muted ring-1 ring-line hover:text-fg hover:ring-line-strong'
+              }`}
+            >
+              <span
+                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ring-1 ${
+                  active ? 'bg-accent ring-accent' : 'ring-line-strong'
+                }`}
+              >
+                {active && <span className="h-1.5 w-1.5 rounded-full bg-black" />}
+              </span>
+              {GEARBOX_LABELS[t]}
+            </button>
+          )
+        })}
+      </div>
+      {error && <p className="mt-1.5 text-xs text-red-300">{error}</p>}
     </div>
   )
 }

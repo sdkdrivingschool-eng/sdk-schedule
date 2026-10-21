@@ -35,22 +35,24 @@ export async function fetchBookingSettings() {
   return data ?? { min_notice_hours: 24, horizon_days: 56, slot_step_minutes: 30 }
 }
 
-/** Dates (yyyy-MM-dd) in [from, to] with at least one free start time. */
-export async function fetchAvailableDays(from, to, minutes) {
+/** Dates (yyyy-MM-dd) in [from, to] with at least one free start time for this gearbox. */
+export async function fetchAvailableDays(from, to, minutes, transmission) {
   const { data, error } = await supabase.rpc('get_available_days', {
     p_from: from,
     p_to: to,
     p_minutes: minutes,
+    p_transmission: transmission,
   })
   if (error) throw error
   return (data ?? []).map((r) => r.day)
 }
 
-/** Free start times (ISO strings) on one London date. */
-export async function fetchAvailableSlots(date, minutes) {
+/** Free start times (ISO strings) on one London date for this gearbox. */
+export async function fetchAvailableSlots(date, minutes, transmission) {
   const { data, error } = await supabase.rpc('get_available_slots', {
     p_date: date,
     p_minutes: minutes,
+    p_transmission: transmission,
   })
   if (error) throw error
   return (data ?? []).map((r) => r.slot_start)

@@ -10,6 +10,7 @@ import {
   formatPrice,
   remember,
 } from '../../lib/publicApi'
+import { trackBookingConversion } from '../../lib/analytics'
 import { CheckSpamNote, Notice, Panel, PublicLayout } from './PublicLayout'
 import { SlotPicker } from './SlotPicker'
 import { ContactFields, EMPTY_CONTACT, validateContact } from './ContactFields'
@@ -163,6 +164,7 @@ export default function Book() {
         ...contact,
       })
       setRequestDone(res)
+      trackBookingConversion({ id: res.request_id })
       window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err) {
       setSubmitError(err.message)

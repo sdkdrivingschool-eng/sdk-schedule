@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { Button, Spinner } from '../../components/ui'
 import { durationLabel, fmtRange, zoned } from '../../lib/schedule'
 import { callBooking } from '../../lib/publicApi'
+import { trackBookingConversion } from '../../lib/analytics'
 import { CheckSpamNote, Notice, Panel, PublicLayout } from './PublicLayout'
 
 const POLL_MS = 2000
@@ -50,6 +51,12 @@ export function BookSuccess() {
   }, [sessionId])
 
   const { loading, data, error } = state
+
+  // The order is only 'paid' once Stripe has confirmed the payment server-side.
+  const paid = data?.status === 'paid'
+  useEffect(() => {
+    if (paid) trackBookingConversion({ id: sessionId })
+  }, [paid, sessionId])
 
   return (
     <PublicLayout>

@@ -5,6 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#4f46e5" />
     <title>SDK Driving School — Scheduling</title>
+
+    <!-- Google tag (Google Ads). Consent Mode v2: nothing is stored until the
+         visitor accepts the cookie banner (src/lib/analytics.js keeps the
+         choice under the same localStorage key). -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+      });
+      try {
+        if (localStorage.getItem('sdk-cookie-consent') === 'granted') {
+          gtag('consent', 'update', {
+            ad_storage: 'granted',
+            ad_user_data: 'granted',
+            ad_personalization: 'granted',
+            analytics_storage: 'granted',
+          });
+        }
+      } catch (e) {}
+      gtag('js', new Date());
+      gtag('config', 'AW-16890045753');
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-16890045753"></script>
   </head>
   <body>
     <div id="root"></div>

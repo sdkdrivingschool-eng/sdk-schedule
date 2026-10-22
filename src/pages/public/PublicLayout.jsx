@@ -1,10 +1,14 @@
+import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
+import { readConsent, saveConsent } from '../../lib/analytics'
 
 /**
  * Shell for the customer-facing pages. Deliberately separate from the staff
  * app: no sidebar, no sign-in, nothing that hints at the instructor screens.
  */
 export function PublicLayout({ children }) {
+  const [askConsent, setAskConsent] = useState(() => readConsent() === null)
+
   return (
     <div className="flex min-h-dvh flex-col bg-black text-fg">
       <header className="sticky top-0 z-20 border-b border-line bg-black/90 backdrop-blur">
@@ -39,9 +43,59 @@ export function PublicLayout({ children }) {
           >
             info@sdkdrivingschool.com
           </a>
-          . Payments are processed securely by Stripe.
+          . Payments are processed securely by Stripe.{' '}
+          <button
+            type="button"
+            onClick={() => setAskConsent(true)}
+            className="text-fg-muted underline underline-offset-2 hover:text-fg"
+          >
+            Cookie settings
+          </button>
         </div>
       </footer>
+
+      {askConsent && (
+        <ConsentBanner
+          onChoose={(choice) => {
+            saveConsent(choice)
+            setAskConsent(false)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+/** UK cookie consent for the Google Ads tag (Consent Mode v2, default denied). */
+function ConsentBanner({ onChoose }) {
+  return (
+    <div
+      role="dialog"
+      aria-label="Cookie consent"
+      className="fixed inset-x-0 bottom-0 z-30 p-3 sm:p-4"
+    >
+      <div className="mx-auto flex max-w-3xl flex-col gap-3 rounded-xl border border-line bg-surface/95 px-4 py-3 shadow-lg backdrop-blur sm:flex-row sm:items-center">
+        <p className="flex-1 text-xs text-fg-muted">
+          We use cookies to measure how people find us through our ads. Booking
+          works the same either way.
+        </p>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={() => onChoose('denied')}
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-fg-muted ring-1 ring-line transition-colors hover:text-fg hover:ring-line-strong"
+          >
+            Reject
+          </button>
+          <button
+            type="button"
+            onClick={() => onChoose('granted')}
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-black transition-all active:scale-95"
+          >
+            Accept
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

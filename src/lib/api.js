@@ -250,15 +250,17 @@ export async function fetchFreeInstructors(bookingId) {
 
 /**
  * Assign or reassign. The database re-checks the instructor is free under
- * the schedule lock and queues the customer's email in the same transaction.
+ * the schedule lock and, when `emailCustomer` is set, queues the customer's
+ * email in the same transaction.
  */
-export async function assignBooking(bookingId, instructorId) {
+export async function assignBooking(bookingId, instructorId, { emailCustomer = true } = {}) {
   const { error } = await supabase.rpc('assign_booking', {
     p_booking_id: bookingId,
     p_instructor_id: instructorId,
+    p_email_customer: emailCustomer,
   })
   if (error) throw error
-  kickEmails()
+  if (emailCustomer) kickEmails()
 }
 
 /** Customer, order and remaining hours behind an online booking. */

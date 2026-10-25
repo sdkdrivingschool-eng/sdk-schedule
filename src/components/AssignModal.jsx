@@ -16,7 +16,7 @@ export function AssignModal({ open, booking, onClose, onAssigned }) {
   const [options, setOptions] = useState([])
   const [loading, setLoading] = useState(false)
   const [choice, setChoice] = useState(null)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState(null) // null | 'assign' | 'email'
   const [error, setError] = useState(null)
 
   const bookingId = booking?.id
@@ -26,7 +26,7 @@ export function AssignModal({ open, booking, onClose, onAssigned }) {
     let active = true
     setLoading(true)
     setError(null)
-    setBusy(false)
+    setBusy(null)
     setChoice(null)
     fetchFreeInstructors(bookingId)
       .then((rows) => {
@@ -50,16 +50,16 @@ export function AssignModal({ open, booking, onClose, onAssigned }) {
   const end = zoned(booking.end_time)
   const reassigning = Boolean(booking.instructor_id)
 
-  async function submit() {
-    setBusy(true)
+  async function submit(emailCustomer) {
+    setBusy(emailCustomer ? 'email' : 'assign')
     setError(null)
     try {
-      await assignBooking(booking.id, choice)
+      await assignBooking(booking.id, choice, { emailCustomer })
       onAssigned?.()
       onClose()
     } catch (err) {
       setError(describeWriteError(err))
-      setBusy(false)
+      setBusy(null)
       // Refresh the list — the most likely failure is that it went stale.
       fetchFreeInstructors(booking.id).then(setOptions).catch(() => {})
     }
@@ -73,11 +73,19 @@ export function AssignModal({ open, booking, onClose, onAssigned }) {
       subtitle={booking.student_name}
       footer={
         <>
-          <Button onClick={onClose} disabled={busy}>
+          <Button onClick={onClose} disabled={Boolean(busy)}>
             Cancel
           </Button>
-          <Button variant="primary" onClick={submit} disabled={!choice || busy || loading}>
-            {busy && <Spinner />}
+          <Button onClick={() => submit(false)} disabled={!choice || Boolean(busy) || loading}>
+            {busy === 'assign' && <Spinner />}
+            {reassigning ? 'Reassign' : 'Assign'}
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => submit(true)}
+            disabled={!choice || Boolean(busy) || loading}
+          >
+            {busy === 'email' && <Spinner />}
             {reassigning ? 'Reassign & email customer' : 'Assign & email customer'}
           </Button>
         </>
@@ -142,8 +150,8 @@ export function AssignModal({ open, booking, onClose, onAssigned }) {
         )}
 
         <p className="text-xs text-fg-subtle">
-          The customer is emailed automatically with the instructor's name and
-          lesson details.
+          “Assign & email customer” sends them the instructor's name and lesson
+          details. “Assign” updates the schedule without emailing them.
         </p>
 
         <ErrorNote>{error}</ErrorNote>

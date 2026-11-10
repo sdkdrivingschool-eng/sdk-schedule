@@ -68,7 +68,7 @@ export function describeWriteError(error) {
 export async function fetchUsers() {
   const { data, error } = await supabase
     .from('users')
-    .select('id, email, name, role')
+    .select('id, email, name, role, active')
     .order('role')
     .order('name')
 

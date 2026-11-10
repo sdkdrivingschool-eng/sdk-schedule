@@ -45,8 +45,10 @@ function ScheduleScreen() {
     [setSearchParams],
   )
 
+  // Inactive instructors (e.g. off the road for a while) are hidden
+  // everywhere here; the database already treats them as never free.
   const instructors = useMemo(
-    () => users.filter((u) => u.role === 'instructor'),
+    () => users.filter((u) => u.role === 'instructor' && u.active !== false),
     [users],
   )
 

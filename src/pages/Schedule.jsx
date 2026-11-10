@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { addDays, addWeeks, format, isSameDay } from 'date-fns'
+import { addDays, addMonths, addWeeks, format, isSameDay } from 'date-fns'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { fetchSchedule, fetchUsers } from '../lib/api'
-import { fromDateInput, nowZoned, roleLabel, toDateInput, weekDays, weekStart } from '../lib/schedule'
+import { fromDateInput, monthGridRange, nowZoned, roleLabel, toDateInput, weekDays, weekStart } from '../lib/schedule'
 import { DayGrid, WeekGrid } from '../components/ScheduleGrid'
+import { MonthGrid } from '../components/MonthGrid'
 import { Legend } from '../components/ScheduleSegment'
 import { BookingModal } from '../components/BookingModal'
 import { UnavailableModal } from '../components/UnavailableModal'
@@ -64,11 +65,14 @@ function ScheduleScreen() {
   const days = useMemo(() => weekDays(anchor), [anchor])
 
   // Always load the whole surrounding week, so toggling week/day and stepping
-  // between days inside a week needs no extra round trips.
+  // between days inside a week needs no extra round trips. The month view
+  // loads every week its calendar shows.
+  const monthView = view === 'month'
   const range = useMemo(() => {
+    if (monthView) return monthGridRange(anchor)
     const from = weekStart(anchor)
     return { from, to: addDays(from, 7) }
-  }, [anchor])
+  }, [anchor, monthView])
 
   const load = useCallback(async () => {
     setError(null)
@@ -94,9 +98,11 @@ function ScheduleScreen() {
 
   function step(direction) {
     setAnchor((current) =>
-      view === 'week'
-        ? addWeeks(current, direction)
-        : addDays(current, direction),
+      view === 'month'
+        ? addMonths(current, direction)
+        : view === 'week'
+          ? addWeeks(current, direction)
+          : addDays(current, direction),
     )
   }
 
@@ -120,6 +126,7 @@ function ScheduleScreen() {
 
   const periodLabel = useMemo(() => {
     if (view === 'day') return format(anchor, 'EEEE d MMMM yyyy')
+    if (view === 'month') return format(anchor, 'MMMM yyyy')
     const start = days[0]
     const end = days[6]
     const sameMonth = start.getMonth() === end.getMonth()
@@ -170,7 +177,7 @@ function ScheduleScreen() {
 
           {/* View toggle — separate pills, not a shared segmented track */}
           <div className="mt-6 flex gap-2">
-            {['week', 'day'].map((v) => (
+            {['month', 'week', 'day'].map((v) => (
               <button
                 key={v}
                 type="button"
@@ -304,6 +311,19 @@ function ScheduleScreen() {
               <p className="rounded-xl bg-surface p-8 text-center text-sm text-fg-subtle ring-1 ring-line">
                 No instructors found. Add users with role “instructor”.
               </p>
+            ) : view === 'month' ? (
+              <MonthGrid
+                month={anchor}
+                instructors={visibleInstructors}
+                allInstructors={instructors}
+                bookings={bookings}
+                blocks={blocks}
+                showUnassigned={isAdmin && tab === ALL}
+                onPickDay={(d) => {
+                  setAnchor(d)
+                  setView('day')
+                }}
+              />
             ) : view === 'week' ? (
               <WeekGrid
                 days={days}

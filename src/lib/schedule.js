@@ -2,9 +2,11 @@ import {
   addDays,
   addMinutes,
   differenceInMinutes,
+  endOfMonth,
   format,
   isSameDay,
   startOfDay,
+  startOfMonth,
   startOfWeek,
 } from 'date-fns'
 import { TZDate } from '@date-fns/tz'
@@ -104,6 +106,13 @@ export function weekStart(date) {
 export function weekDays(date) {
   const start = weekStart(date)
   return Array.from({ length: 7 }, (_, i) => addDays(start, i))
+}
+
+/** Mon–Sun weeks covering the month that contains `date` (5 or 6 rows). */
+export function monthGridRange(date) {
+  const from = weekStart(startOfMonth(zoned(date)))
+  const to = addDays(weekStart(endOfMonth(zoned(date))), 7)
+  return { from, to }
 }
 
 /** Start/end Date pair bounding the working window on `day`. */
